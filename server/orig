@@ -1,0 +1,11 @@
+package main
+
+import (
+    "fmt"
+    "example.com/worker"
+)
+
+func main() {
+    message := worker.Run("./test.sh")
+    fmt.Println(message)
+}
