@@ -41,9 +41,9 @@ type server struct {
 func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStatus, error) {
 	log.Printf("Received: %v", in.GetJob())
 	// TODO input sanitization?
-	res := worker.Run(in.GetJob())
-	log.Printf("Result: %v", res)
-	return &pb.JobStatus{JobID: "1", Status: "probably ok"}, nil
+	jobID, res := worker.Run(in.GetJob())
+	log.Printf("JobID, Result: %v, %v", jobID, res)
+	return &pb.JobStatus{JobID: jobID, Status: res}, nil
 }
 
 /*
