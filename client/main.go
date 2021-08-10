@@ -26,13 +26,11 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	pb "google.golang.org/grpc/examples/helloworld/helloworld"
+	pb "project/proto"
 )
 
-const (
-	address     = "localhost:50051"
-	defaultName = "world"
-)
+const address = "localhost:50051"
+
 
 func main() {
 	// Set up a connection to the server.
@@ -50,7 +48,9 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := c.SayHello(ctx, &pb.HelloRequest{Name: name})
+
+	r, err := c.SayHello(ctx, &pb.HelloRequest{Name: name}) // call function here
+
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}

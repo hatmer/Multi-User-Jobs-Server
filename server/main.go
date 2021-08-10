@@ -16,7 +16,7 @@
  *
  */
 
-// Package main implements a server for Greeter service.
+// Package main implements a server for API service.
 package main
 
 import (
@@ -49,6 +49,19 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 func (s *server) SayHelloAgain(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
         return &pb.HelloReply{Message: "Hello again " + in.GetName()}, nil
 }
+
+func (s *routeGuideServer) StreamOutput(rect *pb.Rectangle, stream pb.RouteGuide_ListFeaturesServer) error {
+  for _, feature := range s.savedFeatures {
+    if inRange(feature.Location, rect) {
+      if err := stream.Send(feature); err != nil {
+        return err
+      }
+    }
+  }
+  return nil
+}
+
+
 
 func main() {
 	lis, err := net.Listen("tcp", port)
