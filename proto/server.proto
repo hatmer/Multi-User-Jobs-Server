@@ -17,19 +17,35 @@ syntax = "proto3";
 package server;
 
 // The jobs service definition.
-service Worker {
+service Job {
   // Starts a job
-  rpc Start (JobRequest) returns (JobResponse) {}
-  rpc SayHelloAgain (HelloRequest) returns (HelloReply) {}
+  rpc Start (JobStartRequest) returns (JobStatus) {}
+  rpc Stop (JobControlRequest) returns (JobStatus) {} 
+  rpc QueryStatus (JobControlRequest) returns (JobStatus) {} 
+  rpc StreamOutput(JobControlRequest) returns (stream Line) {}
 }
 
-// The request message containing the user's name.
-message JobRequest {
+// Request message for starting a job
+message JobStartRequest {
   string job = 1;
 }
 
-// The response message containing the greetings
-message JobResponse {
+// Response message containing the JobID and current state of job
+// returned after start, stop or query message
+message JobStatus {
   string jobID = 1;
-  string error = 2;
+  string status = 2;   // current status of job
 }
+
+// Message for stopping and getting information about submitted jobs
+message JobControlRequest {
+  string jobID = 1;
+  string request = 2;  // stop, status, stream
+}
+
+// Line of job output for stream
+message Line {
+  string text = 1;
+}
+
+

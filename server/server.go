@@ -33,23 +33,20 @@ const (
 	port = ":50051"
 )
 
-// server is used to implement helloworld.GreeterServer.
 type server struct {
-	pb.UnimplementedGreeterServer
+	pb.UnimplementedJobServer
 }
 
 // SayHello implements helloworld.GreeterServer
-func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	log.Printf("Received: %v", in.GetName())
-	res := worker.Run("./test.sh")
-	return &pb.HelloReply{Message: "Result " + res}, nil
-	//return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
+func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStatus, error) {
+	log.Printf("Received: %v", in.GetJob())
+	// TODO input sanitization?
+	res := worker.Run(in.getJob())
+	
+	return &pb.JobStatus{jobID: "1", status: "probably ok"}, nil
 }
 
-func (s *server) SayHelloAgain(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-        return &pb.HelloReply{Message: "Hello again " + in.GetName()}, nil
-}
-
+/*
 func (s *routeGuideServer) StreamOutput(rect *pb.Rectangle, stream pb.RouteGuide_ListFeaturesServer) error {
   for _, feature := range s.savedFeatures {
     if inRange(feature.Location, rect) {
@@ -60,7 +57,7 @@ func (s *routeGuideServer) StreamOutput(rect *pb.Rectangle, stream pb.RouteGuide
   }
   return nil
 }
-
+*/
 
 
 func main() {
@@ -69,7 +66,7 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterGreeterServer(s, &server{})
+	pb.RegisterJobServer(s, &server{})
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
