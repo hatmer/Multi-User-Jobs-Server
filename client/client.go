@@ -63,7 +63,7 @@ func stream(client pb.WorkerClient, req *pb.JobControlRequest) {
 */
 
 // starts a job
-func start(client pb.WorkerClient, req *pb.JobStartRequest) {
+func start(client pb.JobClient, req *pb.JobStartRequest) {
 	//log.Printf("Looking for features within %v", rect)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -71,7 +71,7 @@ func start(client pb.WorkerClient, req *pb.JobStartRequest) {
 	if err != nil {
 		log.Fatalf("%v.ListFeatures(_) = _, %v", client, err)
 	}
-	log.Println(resp.getStatus())
+	log.Println(resp.GetStatus())
 }
 
 func main() {
@@ -84,17 +84,17 @@ func main() {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	c := pb.NewWorkerClient(conn)
+	c := pb.NewJobClient(conn)
 
+	job := "ls -l"
 	// Contact the server and print out its response.
-	name := defaultName
 	if len(os.Args) > 1 {
-		name = os.Args[1]
+		job = os.Args[1]
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	resp, err := c.Start(ctx, &pb.JobStartRequest{job: "ls -l"}) // call function here
+	resp, err := c.Start(ctx, &pb.JobStartRequest{Job: job}) // call function here
 
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
