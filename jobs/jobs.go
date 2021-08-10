@@ -1,34 +1,44 @@
 package jobs
 
 import (
-    "os/exec"
-    "os"
+	"os"
+	"os/exec"
+
+	"math/rand"
 )
 
-type Manager struct {
-    jobIDs   []string
+func getUUID() string {
+	return string(rand.Intn(100))
 }
 
-
-func (m Manager) Start(command string) (string, string) {
+func Start(manager map[string]string, command string) (string, string) {
 	cmd := exec.Command(command) //, "-l")
 	// TODO check for error
 	cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-    err := cmd.Start()
-    
-    id := 1 // TODO get a new unique ID
-	return id, err
+	cmd.Stderr = os.Stderr
+	err := cmd.Start()
+
+	id := getUUID()
+	for manager[id] != "" {
+		id = getUUID()
+	}
+	manager[id] = "running"
+	if err != nil {
+		return id, err.Error()
+	} else {
+		return id, ""
+	}
 }
 
-
-func (m Manager) Status(command string) string {
+/*
+func Status(command string) string {
     return "ok"
 }
 
-func (m Manager) Stop(command string) string {
+func Stop(command string) string {
     return "ok"
 }
+*/
 
 /*
 func Stream(command string) <-chan int {

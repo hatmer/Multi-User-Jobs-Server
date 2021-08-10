@@ -23,7 +23,7 @@ import (
 	"context"
 	"log"
 	"net"
-	"project/worker"
+	"project/jobs"
 
 	"google.golang.org/grpc"
 	pb "project/proto"
@@ -35,13 +35,15 @@ const (
 
 type server struct {
 	pb.UnimplementedJobServer
+	manager map[string]string
 }
+
 
 // SayHello implements helloworld.GreeterServer
 func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStatus, error) {
 	log.Printf("Received: %v", in.GetJob())
 	// TODO input sanitization?
-	jobID, res := worker.Run(in.GetJob())
+	jobID, res := jobs.Start(s.manager, in.GetJob())
 	log.Printf("JobID, Result: %v, %v", jobID, res)
 	return &pb.JobStatus{JobID: jobID, Status: res}, nil
 }
@@ -66,7 +68,8 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterJobServer(s, &server{})
+	//m := jobs.Manager()
+	pb.RegisterJobServer(s, &server{manager: make(map[string]string)})
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)

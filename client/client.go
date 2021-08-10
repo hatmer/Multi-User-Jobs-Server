@@ -86,7 +86,7 @@ func main() {
 	defer conn.Close()
 	c := pb.NewJobClient(conn)
 
-	job := "ls -l"
+	job := "ls"
 	// Contact the server and print out its response.
 	if len(os.Args) > 1 {
 		job = os.Args[1]
