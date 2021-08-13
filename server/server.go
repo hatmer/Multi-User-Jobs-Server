@@ -24,8 +24,7 @@ import (
 	"log"
 	"net"
 	"project/jobs"
-	"os/exec"
-
+"io"
         "crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
@@ -45,7 +44,7 @@ const (
 
 type server struct {
 	pb.UnimplementedJobServer
-	manager map[string](*exec.Cmd)
+	manager map[string]jobs.CmdData
 }
 
 
@@ -55,7 +54,7 @@ func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStat
 	// TODO input sanitization?
 	p, ok := peer.FromContext(ctx)
 	log.Printf("peer info: %v, %v", p, ok)
-	jobID, res := jobs.Start(s.manager, in.GetJob())
+	jobID, res := jobs.Start(s.manager, in.GetJob(), "owner")
 	log.Printf("JobID, Result: %v, %v", jobID, res)
 	return &pb.JobStatus{JobID: jobID, Status: res}, nil
 }
@@ -63,15 +62,17 @@ func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStat
 // stream output of a job
 func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) error {
     //for line := range s.manager[JobID].Output()
-    //line, err := s.manager[JobID].Output()
-    line := "hello"
-    //for _, feature := range s.savedFeatures {
-    //if inRange(feature.Location, rect) {
-    if err := stream.Send(&pb.Line{Text: line}); err != nil {
-        return err
-      }
-   // }
- // }
+    JobID := in.GetJobID()
+    cmdData := s.manager[JobID]
+    output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
+    //for !cmdData.CmdStruct.ProcessState.Exited(){
+    //log.Printf("exited: %v", cmdData.CmdStruct.ProcessState.Exited())
+    	    if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
+        	return err
+      	    } 
+            	 // TODO wait a second? 
+	    //output, _ = io.ReadAll(cmdData.StdOut)
+    //}
 
   return nil
 }
@@ -121,7 +122,7 @@ func main() {
 
     // Create a new gRPC server
     s := grpc.NewServer(grpc.Creds(cred))
-    pb.RegisterJobServer(s, &server{manager: make(map[string](*exec.Cmd))})
+    pb.RegisterJobServer(s, &server{manager: make(map[string]jobs.CmdData)})
 
     // Start the gRPC server
     log.Printf("server listening at localhost:%v", port)
