@@ -3,31 +3,35 @@ package jobs
 import (
 	"os"
 	"os/exec"
-
+    "strconv"
 	"math/rand"
 )
 
 func getUUID() string {
-	return string(rand.Intn(100))
+	return strconv.Itoa(rand.Intn(100000))
 }
 
 func Start(manager map[string]string, command string) (string, string) {
+    // TODO split command on spaces
 	cmd := exec.Command(command) //, "-l")
-	// TODO check for error
+	
+	// TODO use pipes (are they buffered? maybe use channels?)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Start()
+	if err != nil {
+	    return "", err.Error()
+	}
 
+    // generate an ID and make sure it is unique
 	id := getUUID()
 	for manager[id] != "" {
 		id = getUUID()
 	}
-	manager[id] = "running"
-	if err != nil {
-		return id, err.Error()
-	} else {
-		return id, ""
-	}
+	
+	manager[id] = cmd
+	return id, ""
+	
 }
 
 /*

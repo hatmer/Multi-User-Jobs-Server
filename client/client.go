@@ -29,7 +29,10 @@ import (
 	pb "project/proto"
 )
 
+
 const address = "localhost:50051"
+
+//var caFile = flag.String("ca_file", "", "The file containing the CA root cert file")
 
 /*
 const (
@@ -39,10 +42,10 @@ const (
 	serverHostOverride = flag.String("server_host_override", "x.test.example.com", "The server name used to verify the hostname returned by the TLS handshake")
 )*/
 
-/*
+
 // stream streams output of a job
 func stream(client pb.WorkerClient, req *pb.JobControlRequest) {
-	//log.Printf("Looking for features within %v", rect)
+	//log.Printf("streaming")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // TODO timeout for stream?
 	defer cancel()
 	stream, err := client.StreamOutput(ctx, req)
@@ -59,8 +62,9 @@ func stream(client pb.WorkerClient, req *pb.JobControlRequest) {
 		}
 		log.Printf("Line: %q", line.GetText())
 	}
+	return "was printed", nil
 }
-*/
+
 
 // starts a job
 func start(client pb.JobClient, req *pb.JobStartRequest) {
@@ -95,7 +99,7 @@ func main() {
 	defer cancel()
 
 	resp, err := c.Start(ctx, &pb.JobStartRequest{Job: job}) // call function here
-
+	resp, err := c.Stream(ctx, &pb.JobStartRequest{JobID: job, Request: "stream"})
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}

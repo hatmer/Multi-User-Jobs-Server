@@ -23,8 +23,8 @@ service Job {
   // Starts a job
   rpc Start (JobStartRequest) returns (JobStatus) {}
   rpc Stop (JobControlRequest) returns (JobStatus) {} 
-  rpc QueryStatus (JobControlRequest) returns (JobStatus) {} 
-  rpc StreamOutput(JobControlRequest) returns (stream Line) {}
+  rpc Status (JobControlRequest) returns (JobStatus) {} 
+  rpc Stream(JobControlRequest) returns (stream Line) {}
 }
 
 // Request message for starting a job

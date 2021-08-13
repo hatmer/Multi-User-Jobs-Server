@@ -24,32 +24,38 @@ import (
 	"log"
 	"net"
 	"project/jobs"
-
+	"os/exec"
 	"google.golang.org/grpc"
 	pb "project/proto"
+	"peer"
 )
 
 const (
 	port = ":50051"
+	certFile = "server.crt"
+	keyFile = "server.pem"
 )
+
 
 type server struct {
 	pb.UnimplementedJobServer
-	manager map[string]string
+	manager map[string](exec.Cmd)
 }
 
 
-// SayHello implements helloworld.GreeterServer
+// Start a job
 func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStatus, error) {
 	log.Printf("Received: %v", in.GetJob())
 	// TODO input sanitization?
+	p, ok = peer.FromContext(ctx)
+	log.Printf("peer info: %v", p)
 	jobID, res := jobs.Start(s.manager, in.GetJob())
 	log.Printf("JobID, Result: %v, %v", jobID, res)
 	return &pb.JobStatus{JobID: jobID, Status: res}, nil
 }
 
-/*
-func (s *routeGuideServer) StreamOutput(rect *pb.Rectangle, stream pb.RouteGuide_ListFeaturesServer) error {
+// stream output of a job
+func (s *routeGuideServer) StreamOutput(JobID string, stream pb.RouteGuide_ListFeaturesServer) error {
   for _, feature := range s.savedFeatures {
     if inRange(feature.Location, rect) {
       if err := stream.Send(feature); err != nil {
@@ -59,7 +65,7 @@ func (s *routeGuideServer) StreamOutput(rect *pb.Rectangle, stream pb.RouteGuide
   }
   return nil
 }
-*/
+
 
 
 func main() {
@@ -69,7 +75,7 @@ func main() {
 	}
 	s := grpc.NewServer()
 	//m := jobs.Manager()
-	pb.RegisterJobServer(s, &server{manager: make(map[string]string)})
+	pb.RegisterJobServer(s, &server{manager: make(map[string](exec.Cmd))})
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
