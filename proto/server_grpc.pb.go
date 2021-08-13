@@ -21,8 +21,8 @@ type JobClient interface {
 	// Starts a job
 	Start(ctx context.Context, in *JobStartRequest, opts ...grpc.CallOption) (*JobStatus, error)
 	Stop(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error)
-	QueryStatus(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error)
-	StreamOutput(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (Job_StreamOutputClient, error)
+	Status(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error)
+	Stream(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (Job_StreamClient, error)
 }
 
 type jobClient struct {
@@ -51,21 +51,21 @@ func (c *jobClient) Stop(ctx context.Context, in *JobControlRequest, opts ...grp
 	return out, nil
 }
 
-func (c *jobClient) QueryStatus(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error) {
+func (c *jobClient) Status(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error) {
 	out := new(JobStatus)
-	err := c.cc.Invoke(ctx, "/server.Job/QueryStatus", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/server.Job/Status", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *jobClient) StreamOutput(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (Job_StreamOutputClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Job_ServiceDesc.Streams[0], "/server.Job/StreamOutput", opts...)
+func (c *jobClient) Stream(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (Job_StreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Job_ServiceDesc.Streams[0], "/server.Job/Stream", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &jobStreamOutputClient{stream}
+	x := &jobStreamClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -75,16 +75,16 @@ func (c *jobClient) StreamOutput(ctx context.Context, in *JobControlRequest, opt
 	return x, nil
 }
 
-type Job_StreamOutputClient interface {
+type Job_StreamClient interface {
 	Recv() (*Line, error)
 	grpc.ClientStream
 }
 
-type jobStreamOutputClient struct {
+type jobStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *jobStreamOutputClient) Recv() (*Line, error) {
+func (x *jobStreamClient) Recv() (*Line, error) {
 	m := new(Line)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -99,8 +99,8 @@ type JobServer interface {
 	// Starts a job
 	Start(context.Context, *JobStartRequest) (*JobStatus, error)
 	Stop(context.Context, *JobControlRequest) (*JobStatus, error)
-	QueryStatus(context.Context, *JobControlRequest) (*JobStatus, error)
-	StreamOutput(*JobControlRequest, Job_StreamOutputServer) error
+	Status(context.Context, *JobControlRequest) (*JobStatus, error)
+	Stream(*JobControlRequest, Job_StreamServer) error
 	mustEmbedUnimplementedJobServer()
 }
 
@@ -114,11 +114,11 @@ func (UnimplementedJobServer) Start(context.Context, *JobStartRequest) (*JobStat
 func (UnimplementedJobServer) Stop(context.Context, *JobControlRequest) (*JobStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
-func (UnimplementedJobServer) QueryStatus(context.Context, *JobControlRequest) (*JobStatus, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method QueryStatus not implemented")
+func (UnimplementedJobServer) Status(context.Context, *JobControlRequest) (*JobStatus, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
 }
-func (UnimplementedJobServer) StreamOutput(*JobControlRequest, Job_StreamOutputServer) error {
-	return status.Errorf(codes.Unimplemented, "method StreamOutput not implemented")
+func (UnimplementedJobServer) Stream(*JobControlRequest, Job_StreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method Stream not implemented")
 }
 func (UnimplementedJobServer) mustEmbedUnimplementedJobServer() {}
 
@@ -169,42 +169,42 @@ func _Job_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Job_QueryStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Job_Status_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(JobControlRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(JobServer).QueryStatus(ctx, in)
+		return srv.(JobServer).Status(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/server.Job/QueryStatus",
+		FullMethod: "/server.Job/Status",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobServer).QueryStatus(ctx, req.(*JobControlRequest))
+		return srv.(JobServer).Status(ctx, req.(*JobControlRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Job_StreamOutput_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _Job_Stream_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(JobControlRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(JobServer).StreamOutput(m, &jobStreamOutputServer{stream})
+	return srv.(JobServer).Stream(m, &jobStreamServer{stream})
 }
 
-type Job_StreamOutputServer interface {
+type Job_StreamServer interface {
 	Send(*Line) error
 	grpc.ServerStream
 }
 
-type jobStreamOutputServer struct {
+type jobStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *jobStreamOutputServer) Send(m *Line) error {
+func (x *jobStreamServer) Send(m *Line) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -224,14 +224,14 @@ var Job_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Job_Stop_Handler,
 		},
 		{
-			MethodName: "QueryStatus",
-			Handler:    _Job_QueryStatus_Handler,
+			MethodName: "Status",
+			Handler:    _Job_Status_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "StreamOutput",
-			Handler:       _Job_StreamOutput_Handler,
+			StreamName:    "Stream",
+			Handler:       _Job_Stream_Handler,
 			ServerStreams: true,
 		},
 	},

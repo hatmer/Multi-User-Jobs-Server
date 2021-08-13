@@ -22,35 +22,28 @@ package main
 import (
 	"context"
 	"log"
-	"os"
 	"time"
-
+	"io"
+	"crypto/tls"
+        "crypto/x509"
+	"io/ioutil"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	pb "project/proto"
 )
 
 
-const address = "localhost:50051"
-
-//var caFile = flag.String("ca_file", "", "The file containing the CA root cert file")
-
-/*
-const (
-	tls                = flag.Bool("tls", false, "Connection uses TLS if true, else plain TCP")
-	caFile             = flag.String("ca_file", "", "The file containing the CA root cert file")
-	serverAddr         = flag.String("server_addr", "localhost:10000", "The server address in the format of host:port")
-	serverHostOverride = flag.String("server_host_override", "x.test.example.com", "The server name used to verify the hostname returned by the TLS handshake")
-)*/
+const serverAddr = "127.0.0.1:50051"
 
 
 // stream streams output of a job
-func stream(client pb.WorkerClient, req *pb.JobControlRequest) {
-	//log.Printf("streaming")
+func stream(client pb.JobClient, req *pb.JobControlRequest) {
+	log.Printf("streaming")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // TODO timeout for stream?
 	defer cancel()
-	stream, err := client.StreamOutput(ctx, req)
+	stream, err := client.Stream(ctx, req)
 	if err != nil {
-		log.Fatalf("%v.ListFeatures(_) = _, %v", client, err)
+		log.Fatalf("%v stream fxn error, %v", client, err)
 	}
 	for {
 		line, err := stream.Recv()
@@ -58,11 +51,11 @@ func stream(client pb.WorkerClient, req *pb.JobControlRequest) {
 			break
 		}
 		if err != nil {
-			log.Fatalf("%v.ListFeatures(_) = _, %v", client, err)
+			log.Fatalf("%v stream recv error, %v", client, err)
 		}
 		log.Printf("Line: %q", line.GetText())
 	}
-	return "was printed", nil
+	log.Printf("stream complete")
 }
 
 
@@ -73,35 +66,62 @@ func start(client pb.JobClient, req *pb.JobStartRequest) {
 	defer cancel()
 	resp, err := client.Start(ctx, req)
 	if err != nil {
-		log.Fatalf("%v.ListFeatures(_) = _, %v", client, err)
+		log.Fatalf("%v start fxn err, %v", client, err)
 	}
 	log.Println(resp.GetStatus())
 }
 
 func main() {
     
-    // TODO read args: start/stop/status/stream jobID <arg2>
+    // TODO read args: start/stop/status/stream jobID
     
-	// Set up a connection to the server.
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-	c := pb.NewJobClient(conn)
+        // Load the client certificate and its key
+    clientCert, err := tls.LoadX509KeyPair("client.pem", "client.key")
+    if err != nil {
+        log.Fatalf("Failed to load client certificate and key. %s.", err)
+    }
 
-	job := "ls"
-	// Contact the server and print out its response.
-	if len(os.Args) > 1 {
-		job = os.Args[1]
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+    // Load the CA certificate
+    trustedCert, err := ioutil.ReadFile("cacert.pem")
+    if err != nil {
+        log.Fatalf("Failed to load trusted certificate. %s.", err)
+    }
 
-	resp, err := c.Start(ctx, &pb.JobStartRequest{Job: job}) // call function here
-	resp, err := c.Stream(ctx, &pb.JobStartRequest{JobID: job, Request: "stream"})
-	if err != nil {
-		log.Fatalf("could not greet: %v", err)
-	}
-	log.Printf("Job start status: %s", resp.GetStatus())
+    // Put the CA certificate to certificate pool
+    certPool := x509.NewCertPool()
+    if !certPool.AppendCertsFromPEM(trustedCert) {
+        log.Fatalf("Failed to append trusted certificate to certificate pool. %s.", err)
+    }
+
+    // Create the TLS configuration
+    tlsConfig := &tls.Config{
+        Certificates: []tls.Certificate{clientCert},
+        RootCAs:      certPool,
+        MinVersion:   tls.VersionTLS13,
+        MaxVersion:   tls.VersionTLS13,
+    }
+
+    // Create a new TLS credentials based on the TLS configuration
+    cred := credentials.NewTLS(tlsConfig)
+
+    // Dial the gRPC server with the given credentials
+    conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(cred))
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer func() {
+        err = conn.Close()
+        if err != nil {
+            log.Printf("Unable to close gRPC channel. %s.", err)
+        }
+    }()
+
+client := pb.NewJobClient(conn)
+
+	// Looking for a valid feature
+	start(client, &pb.JobStartRequest{Job: "ps"})
+
+	// Looking for features between 40, -75 and 42, -73.
+	stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
+
 }

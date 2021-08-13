@@ -25,9 +25,15 @@ import (
 	"net"
 	"project/jobs"
 	"os/exec"
+
+        "crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
+	"google.golang.org/grpc/credentials"
+
 	"google.golang.org/grpc"
 	pb "project/proto"
-	"peer"
+	"google.golang.org/grpc/peer"
 )
 
 const (
@@ -39,7 +45,7 @@ const (
 
 type server struct {
 	pb.UnimplementedJobServer
-	manager map[string](exec.Cmd)
+	manager map[string](*exec.Cmd)
 }
 
 
@@ -47,37 +53,80 @@ type server struct {
 func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStatus, error) {
 	log.Printf("Received: %v", in.GetJob())
 	// TODO input sanitization?
-	p, ok = peer.FromContext(ctx)
-	log.Printf("peer info: %v", p)
+	p, ok := peer.FromContext(ctx)
+	log.Printf("peer info: %v, %v", p, ok)
 	jobID, res := jobs.Start(s.manager, in.GetJob())
 	log.Printf("JobID, Result: %v, %v", jobID, res)
 	return &pb.JobStatus{JobID: jobID, Status: res}, nil
 }
 
 // stream output of a job
-func (s *routeGuideServer) StreamOutput(JobID string, stream pb.RouteGuide_ListFeaturesServer) error {
-  for _, feature := range s.savedFeatures {
-    if inRange(feature.Location, rect) {
-      if err := stream.Send(feature); err != nil {
+func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) error {
+    //for line := range s.manager[JobID].Output()
+    //line, err := s.manager[JobID].Output()
+    line := "hello"
+    //for _, feature := range s.savedFeatures {
+    //if inRange(feature.Location, rect) {
+    if err := stream.Send(&pb.Line{Text: line}); err != nil {
         return err
       }
-    }
-  }
+   // }
+ // }
+
   return nil
 }
 
-
-
 func main() {
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
-	//m := jobs.Manager()
-	pb.RegisterJobServer(s, &server{manager: make(map[string](exec.Cmd))})
-	log.Printf("server listening at %v", lis.Addr())
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
+// Load the server certificate and its key
+    serverCert, err := tls.LoadX509KeyPair("server.pem", "server.key")
+    if err != nil {
+        log.Fatalf("Failed to load server certificate and key. %s.", err)
+    }
+
+    // Load the CA certificate
+    trustedCert, err := ioutil.ReadFile("cacert.pem")
+    if err != nil {
+        log.Fatalf("Failed to load trusted certificate. %s.", err)
+    }
+
+    // Put the CA certificate to certificate pool
+    certPool := x509.NewCertPool()
+    if !certPool.AppendCertsFromPEM(trustedCert) {
+        log.Fatalf("Failed to append trusted certificate to certificate pool. %s.", err)
+    }
+
+    // Create the TLS configuration
+    tlsConfig := &tls.Config{
+        Certificates: []tls.Certificate{serverCert},
+        RootCAs:      certPool,
+        ClientCAs:    certPool,
+        MinVersion:   tls.VersionTLS13,
+        MaxVersion:   tls.VersionTLS13,
+    }
+
+    // Create a new TLS credentials based on the TLS configuration
+    cred := credentials.NewTLS(tlsConfig)
+
+    // Create a listener that listens to localhost
+    listener, err := net.Listen("tcp", "localhost:50051")
+    if err != nil {
+        log.Fatalf("Failed to start listener. %s.", err)
+    }
+    defer func() {
+        err = listener.Close()
+        if err != nil {
+            log.Printf("Failed to close listener. %s\n", err)
+        }
+    }()
+
+    // Create a new gRPC server
+    s := grpc.NewServer(grpc.Creds(cred))
+    pb.RegisterJobServer(s, &server{manager: make(map[string](*exec.Cmd))})
+
+    // Start the gRPC server
+    log.Printf("server listening at localhost:%v", port)
+    err = s.Serve(listener)
+    if err != nil {
+        log.Fatalf("Failed to start gRPC server. %s.", err)
+    }
 }

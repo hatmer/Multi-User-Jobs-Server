@@ -11,7 +11,7 @@ func getUUID() string {
 	return strconv.Itoa(rand.Intn(100000))
 }
 
-func Start(manager map[string]string, command string) (string, string) {
+func Start(manager map[string](*exec.Cmd), command string) (string, string) {
     // TODO split command on spaces
 	cmd := exec.Command(command) //, "-l")
 	
@@ -25,9 +25,9 @@ func Start(manager map[string]string, command string) (string, string) {
 
     // generate an ID and make sure it is unique
 	id := getUUID()
-	for manager[id] != "" {
-		id = getUUID()
-	}
+	//for manager[id] != nil {
+	//	id = getUUID()
+	//}
 	
 	manager[id] = cmd
 	return id, ""
