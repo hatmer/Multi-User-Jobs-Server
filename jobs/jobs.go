@@ -31,6 +31,7 @@ func Start(manager map[string](CmdData), command string, owner string) (string, 
 	if err != nil {
 	    return "", err.Error()
 	}
+	go cmd.Wait()
 
 	data := CmdData{CmdStruct: cmd, StdOut: stdout, StdErr: stderr, Owner: owner}
 

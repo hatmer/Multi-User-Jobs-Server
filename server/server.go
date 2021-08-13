@@ -64,15 +64,19 @@ func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) er
     //for line := range s.manager[JobID].Output()
     JobID := in.GetJobID()
     cmdData := s.manager[JobID]
-    output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
-    //for !cmdData.CmdStruct.ProcessState.Exited(){
-    //log.Printf("exited: %v", cmdData.CmdStruct.ProcessState.Exited())
-    	    if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
-        	return err
-      	    } 
-            	 // TODO wait a second? 
-	    //output, _ = io.ReadAll(cmdData.StdOut)
-    //}
+    
+    
+    for cmdData.CmdStruct.ProcessState == nil { // while the process is still running
+      output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
+      if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
+          return err
+      }
+      // TODO wait
+    }
+    output = fmt.Sprintf("Job exited with code: %v", cmdData.CmdStruct.ProcessState.ExitCode())
+    if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
+     return err
+    }
 
   return nil
 }
