@@ -25,6 +25,7 @@ import (
 	"net"
 	"project/jobs"
 "io"
+"fmt"
         "crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
@@ -58,6 +59,13 @@ func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStat
 	log.Printf("JobID, Result: %v, %v", jobID, res)
 	return &pb.JobStatus{JobID: jobID, Status: res}, nil
 }
+/*
+func send(stream pb.Job_StreamServer, value string) {
+	if err:= stream.Send(&pb.Line{Text: value}); err != nil {
+		return err
+	}
+	return nil
+}*/
 
 // stream output of a job
 func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) error {
@@ -68,13 +76,20 @@ func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) er
     
     for cmdData.CmdStruct.ProcessState == nil { // while the process is still running
       output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
-      if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
-          return err
-      }
+      if string(output) != "" {
+      	if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
+        	  return err
+      	}
+     }
       // TODO wait
     }
-    output = fmt.Sprintf("Job exited with code: %v", cmdData.CmdStruct.ProcessState.ExitCode())
-    if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
+    output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
+   
+	    if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
+        return err
+    }
+    ret := fmt.Sprintf("Job exited with code: %d", cmdData.CmdStruct.ProcessState.ExitCode())
+    if err := stream.Send(&pb.Line{Text: ret}); err != nil {
      return err
     }
 
