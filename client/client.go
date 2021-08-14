@@ -87,7 +87,7 @@ func stop(client pb.JobClient, req *pb.JobControlRequest) {
 
 // gets status of a job
 func status(client pb.JobClient, req *pb.JobControlRequest) {
-	//log.Printf("Looking for features within %v", rect)
+	log.Println("Status")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	resp, err := client.Status(ctx, req)
@@ -145,13 +145,13 @@ func main() {
 	client := pb.NewJobClient(conn)
 
 	// Looking for a valid feature
-	start(client, &pb.JobStartRequest{Job: "./test.sh"})
+	start(client, &pb.JobStartRequest{Job: "ps"})
 
 	// Looking for features between 40, -75 and 42, -73.
 	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
-	stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
+	/*stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
 
 	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
         stop(client, &pb.JobControlRequest{JobID: "1", Request: "stop"})
-	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
+	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})*/
 }

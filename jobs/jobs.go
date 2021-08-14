@@ -7,12 +7,16 @@ import (
 	"math/rand"
 	"os/exec"
 	"strconv"
+	"log"
+	"sync"
 )
 
 type Job struct {
 	CmdStruct *exec.Cmd
 	StdOut    io.ReadCloser
 	StdErr    io.ReadCloser
+	Output    []byte
+	OutputErr []byte
 	Owner     string
 }
 
@@ -27,37 +31,40 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 	// TODO split command on spaces
 	cmd := exec.Command(command) //, "-l")
 
-	stderr, _ := cmd.StderrPipe()
-	stdout, _ := cmd.StdoutPipe()
+	stderrIn, _ := cmd.StderrPipe()
+	stdoutIn, _ := cmd.StdoutPipe()
 
-	err = cmd.Start()
+	err := cmd.Start()
 	if err != nil {
 	    log.Fatalf("cmd.Start() failed with '%s'\n", err)
 		return "", err.Error()
 	}
 	//go cmd.Wait()
-	//var errStdout, errStderr error
-	
+	var errStdout, errStderr error
+	var stdout_copy, stderr_copy []byte
+	streamStdOutR, streamStdOutW := io.Pipe()
+	streamStdErrR, streamStdErrW := io.Pipe()
 
     var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		stdout, errStdout = copyAndCapture(os.Stdout, stdoutIn)
+		stdout_copy, errStdout = copyAndCapture(streamStdOutW, stdoutIn)
+		//go cmd.Wait()
 		//wg.Done()
 	}()
     wg.Add(1)
     go func() {
-	    stderr, errStderr = copyAndCapture(os.Stderr, stderrIn)
+	    stderr_copy, errStderr = copyAndCapture(streamStdErrW, stderrIn)
     }()
 	wg.Wait()
 
-	err = cmd.Wait()
+	//err = cmd.Wait()
 
 
 
 //Output: output, ErrOutput: errOutput
 
-	data := Job{CmdStruct: cmd, StdOut: stdout, StdErr: stderr, Owner: owner}
+        data := Job{CmdStruct: cmd, StdOut: streamStdOutR, StdErr: streamStdErrR, Output: stdout_copy, OutputErr: stderr_copy, Owner: owner}
 
 	// generate an ID and make sure it is unique
 	id := getUUID()

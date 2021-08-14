@@ -30,7 +30,6 @@ import (
 	"log"
 	"net"
 	"project/jobs"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
 	pb "project/proto"
@@ -75,7 +74,7 @@ func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobSta
 
 // Get status of a job
 func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
-	//log.Printf("Received: %v", in.GetJob())
+	log.Printf("Status of %s", in.GetJobID())
 	p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
 	log.Printf("peer info: %v, %v", p, ok)
@@ -83,7 +82,7 @@ func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobS
 
 	jobID := in.GetJobID()
 	res, err := jobs.Status(s.manager, jobID)
-	log.Printf("Job stop result, %v, %v", jobID, res)
+	log.Printf("Job status result, %v, %v", jobID, res)
 
 	return &pb.JobStatus{JobID: jobID, Status: res}, err
 }
