@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-type CmdData struct {
+type Job struct {
 	CmdStruct *exec.Cmd
 	StdOut io.ReadCloser
 	StdErr io.ReadCloser
@@ -16,10 +16,11 @@ type CmdData struct {
 }
 
 func getUUID() string {
+    // random number for simplicity but should be a UUID
 	return strconv.Itoa(rand.Intn(100000))
 }
 
-func Start(manager map[string](CmdData), command string, owner string) (string, string) {
+func Start(manager map[string]Job, command string, owner string) (string, string) {
     // TODO split command on spaces
 	cmd := exec.Command(command) //, "-l")
 	
@@ -33,7 +34,7 @@ func Start(manager map[string](CmdData), command string, owner string) (string, 
 	}
 	go cmd.Wait()
 
-	data := CmdData{CmdStruct: cmd, StdOut: stdout, StdErr: stderr, Owner: owner}
+	data := Job{CmdStruct: cmd, StdOut: stdout, StdErr: stderr, Owner: owner}
 
     // generate an ID and make sure it is unique
 	id := getUUID()
@@ -47,17 +48,41 @@ func Start(manager map[string](CmdData), command string, owner string) (string, 
 	
 }
 
-/*
-func Status(command string) string {
-    return "ok"
+
+func Status(jobID string) (string, error) {
+    
+	job := manager[jobID]
+	status := "running"
+	
+	if job.CmdStruct.ProcessState != nil {
+	    status = fmt.Sprintf("exited with code %d", job.CmdStruct.ProcessState.ExitCode()) // TODO ensure that exit code means process actually exited
+	}
+
+	return fmt.Sprintf("jobID %s status: %s", jobID, status), nil
 }
 
-func Stop(command string) string {
-    return "ok"
-}
-*/
+ 
+func Stop(jobID string) (string, error) {
+    
+	job := manager[jobID]
+	
+	// attempt to stop job
+	if job.CmdStruct.ProcessState != nil {
+	    return "job already stopped", nil
+	}
+	
+	err := job.CmdStruct.Process.Stop()
+	// TODO: kill process group to ensure that any child processes also killed
+	
+	if err != nil {
+	    return "error occured while stopping job", err.Error()
+	}
 
-/*
+	return "job stopped", nil
+}
+
+
+/* TODO multiple clients can stream same output?
 func Stream(command string) <-chan int {
     out := make(chan int)
     go func() {

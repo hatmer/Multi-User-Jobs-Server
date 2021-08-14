@@ -71,6 +71,30 @@ func start(client pb.JobClient, req *pb.JobStartRequest) {
 	log.Println(resp.GetStatus())
 }
 
+// stops a job
+func stop(client pb.JobClient, req *pb.JobControlRequest) {
+	//log.Printf("Looking for features within %v", rect)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := client.Stop(ctx, req)
+	if err != nil {
+		log.Fatalf("%v stop fxn err, %v", client, err)
+	}
+	log.Println(resp.GetStatus())
+}
+
+// gets status of a job
+func stop(client pb.JobClient, req *pb.JobControlRequest) {
+	//log.Printf("Looking for features within %v", rect)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := client.Status(ctx, req)
+	if err != nil {
+		log.Fatalf("%v stop fxn err, %v", client, err)
+	}
+	log.Println(resp.GetStatus())
+}
+
 func main() {
     
     // TODO read args: start/stop/status/stream jobID

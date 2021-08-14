@@ -45,7 +45,7 @@ const (
 
 type server struct {
 	pb.UnimplementedJobServer
-	manager map[string]jobs.CmdData
+	manager map[string]jobs.Job
 }
 
 
@@ -59,6 +59,35 @@ func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStat
 	log.Printf("JobID, Result: %v, %v", jobID, res)
 	return &pb.JobStatus{JobID: jobID, Status: res}, nil
 }
+
+// Stop a job
+func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
+	//log.Printf("Received: %v", in.GetJob())
+	p, ok := peer.FromContext(ctx)
+	// TODO verify ownership
+	log.Printf("peer info: %v, %v", p, ok)
+	owner := "owner"
+	
+	res := jobs.Stop(s.manager, in.GetJobID())
+	log.Printf("Job stop result, %v, %v", jobID, res)
+	
+	return &pb.JobStatus{JobID: jobID, Status: res}, nil
+}
+
+// Get status of a job
+func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
+	//log.Printf("Received: %v", in.GetJob())
+	p, ok := peer.FromContext(ctx)
+	// TODO verify ownership
+	log.Printf("peer info: %v, %v", p, ok)
+	owner := "owner"
+	
+	res := jobs.Status(s.manager, in.GetJobID())
+	log.Printf("Job stop result, %v, %v", jobID, res)
+	
+	return &pb.JobStatus{JobID: jobID, Status: res}, nil
+}
+
 /*
 func send(stream pb.Job_StreamServer, value string) {
 	if err:= stream.Send(&pb.Line{Text: value}); err != nil {
@@ -141,7 +170,7 @@ func main() {
 
     // Create a new gRPC server
     s := grpc.NewServer(grpc.Creds(cred))
-    pb.RegisterJobServer(s, &server{manager: make(map[string]jobs.CmdData)})
+    pb.RegisterJobServer(s, &server{manager: make(map[string]jobs.Job)})
 
     // Start the gRPC server
     log.Printf("server listening at localhost:%v", port)
