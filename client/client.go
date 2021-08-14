@@ -21,20 +21,20 @@ package main
 
 import (
 	"context"
-	"log"
-	"time"
-	"io"
 	"crypto/tls"
-        "crypto/x509"
-	"io/ioutil"
+	"crypto/x509"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"io"
+	"io/ioutil"
+	"log"
+	"fmt"
+	"strings"
 	pb "project/proto"
+	"time"
 )
 
-
 const serverAddr = "127.0.0.1:50051"
-
 
 // stream streams output of a job
 func stream(client pb.JobClient, req *pb.JobControlRequest) {
@@ -53,11 +53,13 @@ func stream(client pb.JobClient, req *pb.JobControlRequest) {
 		if err != nil {
 			log.Fatalf("%v stream recv error, %v", client, err)
 		}
-		log.Printf("Line: %q", line.GetText())
+		lines := strings.Split(line.GetText(), "\n")
+		for i := 0; i < len(lines); i++ {
+		  fmt.Println(lines[i])
+	        }
 	}
 	log.Printf("stream complete")
 }
-
 
 // starts a job
 func start(client pb.JobClient, req *pb.JobStartRequest) {
@@ -73,7 +75,7 @@ func start(client pb.JobClient, req *pb.JobStartRequest) {
 
 // stops a job
 func stop(client pb.JobClient, req *pb.JobControlRequest) {
-	//log.Printf("Looking for features within %v", rect)
+	log.Printf("Stopping job")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	resp, err := client.Stop(ctx, req)
@@ -84,7 +86,7 @@ func stop(client pb.JobClient, req *pb.JobControlRequest) {
 }
 
 // gets status of a job
-func stop(client pb.JobClient, req *pb.JobControlRequest) {
+func status(client pb.JobClient, req *pb.JobControlRequest) {
 	//log.Printf("Looking for features within %v", rect)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -96,56 +98,60 @@ func stop(client pb.JobClient, req *pb.JobControlRequest) {
 }
 
 func main() {
-    
-    // TODO read args: start/stop/status/stream jobID
-    
-        // Load the client certificate and its key
-    clientCert, err := tls.LoadX509KeyPair("client.pem", "client.key")
-    if err != nil {
-        log.Fatalf("Failed to load client certificate and key. %s.", err)
-    }
 
-    // Load the CA certificate
-    trustedCert, err := ioutil.ReadFile("cacert.pem")
-    if err != nil {
-        log.Fatalf("Failed to load trusted certificate. %s.", err)
-    }
+	// TODO read args: start/stop/status/stream jobID
 
-    // Put the CA certificate to certificate pool
-    certPool := x509.NewCertPool()
-    if !certPool.AppendCertsFromPEM(trustedCert) {
-        log.Fatalf("Failed to append trusted certificate to certificate pool. %s.", err)
-    }
+	// Load the client certificate and its key
+	clientCert, err := tls.LoadX509KeyPair("client.pem", "client.key")
+	if err != nil {
+		log.Fatalf("Failed to load client certificate and key. %s.", err)
+	}
 
-    // Create the TLS configuration
-    tlsConfig := &tls.Config{
-        Certificates: []tls.Certificate{clientCert},
-        RootCAs:      certPool,
-        MinVersion:   tls.VersionTLS13,
-        MaxVersion:   tls.VersionTLS13,
-    }
+	// Load the CA certificate
+	trustedCert, err := ioutil.ReadFile("cacert.pem")
+	if err != nil {
+		log.Fatalf("Failed to load trusted certificate. %s.", err)
+	}
 
-    // Create a new TLS credentials based on the TLS configuration
-    cred := credentials.NewTLS(tlsConfig)
+	// Put the CA certificate to certificate pool
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(trustedCert) {
+		log.Fatalf("Failed to append trusted certificate to certificate pool. %s.", err)
+	}
 
-    // Dial the gRPC server with the given credentials
-    conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(cred))
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer func() {
-        err = conn.Close()
-        if err != nil {
-            log.Printf("Unable to close gRPC channel. %s.", err)
-        }
-    }()
+	// Create the TLS configuration
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      certPool,
+		MinVersion:   tls.VersionTLS13,
+		MaxVersion:   tls.VersionTLS13,
+	}
 
-client := pb.NewJobClient(conn)
+	// Create a new TLS credentials based on the TLS configuration
+	cred := credentials.NewTLS(tlsConfig)
+
+	// Dial the gRPC server with the given credentials
+	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(cred))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		err = conn.Close()
+		if err != nil {
+			log.Printf("Unable to close gRPC channel. %s.", err)
+		}
+	}()
+
+	client := pb.NewJobClient(conn)
 
 	// Looking for a valid feature
-	start(client, &pb.JobStartRequest{Job: "ps"})
+	start(client, &pb.JobStartRequest{Job: "./test.sh"})
 
 	// Looking for features between 40, -75 and 42, -73.
+	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
 	stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
 
+	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
+        stop(client, &pb.JobControlRequest{JobID: "1", Request: "stop"})
+	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
 }

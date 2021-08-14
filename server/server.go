@@ -21,33 +21,31 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"google.golang.org/grpc/credentials"
+	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"project/jobs"
-"io"
-"fmt"
-        "crypto/tls"
-	"crypto/x509"
-	"io/ioutil"
-	"google.golang.org/grpc/credentials"
 
 	"google.golang.org/grpc"
-	pb "project/proto"
 	"google.golang.org/grpc/peer"
+	pb "project/proto"
 )
 
 const (
-	port = ":50051"
+	port     = ":50051"
 	certFile = "server.crt"
-	keyFile = "server.pem"
+	keyFile  = "server.pem"
 )
-
 
 type server struct {
 	pb.UnimplementedJobServer
 	manager map[string]jobs.Job
 }
-
 
 // Start a job
 func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStatus, error) {
@@ -66,26 +64,28 @@ func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobSta
 	p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
 	log.Printf("peer info: %v, %v", p, ok)
-	owner := "owner"
-	
-	res := jobs.Stop(s.manager, in.GetJobID())
+	//owner := "owner"
+	jobID := in.GetJobID()
+
+	res, err := jobs.Stop(s.manager, jobID)
 	log.Printf("Job stop result, %v, %v", jobID, res)
-	
-	return &pb.JobStatus{JobID: jobID, Status: res}, nil
+
+	return &pb.JobStatus{JobID: jobID, Status: res}, err // TODO better error passing around
 }
 
 // Get status of a job
-func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
+func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
 	//log.Printf("Received: %v", in.GetJob())
 	p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
 	log.Printf("peer info: %v, %v", p, ok)
-	owner := "owner"
-	
-	res := jobs.Status(s.manager, in.GetJobID())
+	//owner := "owner"
+
+	jobID := in.GetJobID()
+	res, err := jobs.Status(s.manager, jobID)
 	log.Printf("Job stop result, %v, %v", jobID, res)
-	
-	return &pb.JobStatus{JobID: jobID, Status: res}, nil
+
+	return &pb.JobStatus{JobID: jobID, Status: res}, err
 }
 
 /*
@@ -98,84 +98,83 @@ func send(stream pb.Job_StreamServer, value string) {
 
 // stream output of a job
 func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) error {
-    //for line := range s.manager[JobID].Output()
-    JobID := in.GetJobID()
-    cmdData := s.manager[JobID]
-    
-    
-    for cmdData.CmdStruct.ProcessState == nil { // while the process is still running
-      output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
-      if string(output) != "" {
-      	if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
-        	  return err
-      	}
-     }
-      // TODO wait
-    }
-    output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
-   
-	    if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
-        return err
-    }
-    ret := fmt.Sprintf("Job exited with code: %d", cmdData.CmdStruct.ProcessState.ExitCode())
-    if err := stream.Send(&pb.Line{Text: ret}); err != nil {
-     return err
-    }
+	//for line := range s.manager[JobID].Output()
+	JobID := in.GetJobID()
+	cmdData := s.manager[JobID]
 
-  return nil
+	for cmdData.CmdStruct.ProcessState == nil { // while the process is still running
+		output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
+		if string(output) != "" {
+			if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
+				return err
+			}
+		}
+		// TODO wait
+	}
+	output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
+
+	if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
+		return err
+	}
+	ret := fmt.Sprintf("Job exited with code: %d", cmdData.CmdStruct.ProcessState.ExitCode())
+	if err := stream.Send(&pb.Line{Text: ret}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func main() {
-// Load the server certificate and its key
-    serverCert, err := tls.LoadX509KeyPair("server.pem", "server.key")
-    if err != nil {
-        log.Fatalf("Failed to load server certificate and key. %s.", err)
-    }
+	// Load the server certificate and its key
+	serverCert, err := tls.LoadX509KeyPair("server.pem", "server.key")
+	if err != nil {
+		log.Fatalf("Failed to load server certificate and key. %s.", err)
+	}
 
-    // Load the CA certificate
-    trustedCert, err := ioutil.ReadFile("cacert.pem")
-    if err != nil {
-        log.Fatalf("Failed to load trusted certificate. %s.", err)
-    }
+	// Load the CA certificate
+	trustedCert, err := ioutil.ReadFile("cacert.pem")
+	if err != nil {
+		log.Fatalf("Failed to load trusted certificate. %s.", err)
+	}
 
-    // Put the CA certificate to certificate pool
-    certPool := x509.NewCertPool()
-    if !certPool.AppendCertsFromPEM(trustedCert) {
-        log.Fatalf("Failed to append trusted certificate to certificate pool. %s.", err)
-    }
+	// Put the CA certificate to certificate pool
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(trustedCert) {
+		log.Fatalf("Failed to append trusted certificate to certificate pool. %s.", err)
+	}
 
-    // Create the TLS configuration
-    tlsConfig := &tls.Config{
-        Certificates: []tls.Certificate{serverCert},
-        RootCAs:      certPool,
-        ClientCAs:    certPool,
-        MinVersion:   tls.VersionTLS13,
-        MaxVersion:   tls.VersionTLS13,
-    }
+	// Create the TLS configuration
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		RootCAs:      certPool,
+		ClientCAs:    certPool,
+		MinVersion:   tls.VersionTLS13,
+		MaxVersion:   tls.VersionTLS13,
+	}
 
-    // Create a new TLS credentials based on the TLS configuration
-    cred := credentials.NewTLS(tlsConfig)
+	// Create a new TLS credentials based on the TLS configuration
+	cred := credentials.NewTLS(tlsConfig)
 
-    // Create a listener that listens to localhost
-    listener, err := net.Listen("tcp", "localhost:50051")
-    if err != nil {
-        log.Fatalf("Failed to start listener. %s.", err)
-    }
-    defer func() {
-        err = listener.Close()
-        if err != nil {
-            log.Printf("Failed to close listener. %s\n", err)
-        }
-    }()
+	// Create a listener that listens to localhost
+	listener, err := net.Listen("tcp", "localhost:50051")
+	if err != nil {
+		log.Fatalf("Failed to start listener. %s.", err)
+	}
+	defer func() {
+		err = listener.Close()
+		if err != nil {
+			log.Printf("Failed to close listener. %s\n", err)
+		}
+	}()
 
-    // Create a new gRPC server
-    s := grpc.NewServer(grpc.Creds(cred))
-    pb.RegisterJobServer(s, &server{manager: make(map[string]jobs.Job)})
+	// Create a new gRPC server
+	s := grpc.NewServer(grpc.Creds(cred))
+	pb.RegisterJobServer(s, &server{manager: make(map[string]jobs.Job)})
 
-    // Start the gRPC server
-    log.Printf("server listening at localhost:%v", port)
-    err = s.Serve(listener)
-    if err != nil {
-        log.Fatalf("Failed to start gRPC server. %s.", err)
-    }
+	// Start the gRPC server
+	log.Printf("server listening at localhost:%v", port)
+	err = s.Serve(listener)
+	if err != nil {
+		log.Fatalf("Failed to start gRPC server. %s.", err)
+	}
 }

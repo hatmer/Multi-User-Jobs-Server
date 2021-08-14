@@ -1,33 +1,31 @@
 package jobs
 
 import (
-    "os/exec"
-    "os"
+	"os"
+	"os/exec"
 )
 
 /*type Manager struct {
     jobIDs   []string
 }*/
 
-
 func (m Manager) Start(command string) (string, string) {
 	cmd := exec.Command(command) //, "-l")
 	// TODO check for error
 	cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-    err := cmd.Start()
-    
-    id := 1 // TODO get a new unique ID
+	cmd.Stderr = os.Stderr
+	err := cmd.Start()
+
+	id := 1 // TODO get a new unique ID
 	return id, err
 }
 
-
 func (m Manager) Status(command string) string {
-    return "ok"
+	return "ok"
 }
 
 func (m Manager) Stop(command string) string {
-    return "ok"
+	return "ok"
 }
 
 /*
