@@ -21,19 +21,41 @@ func getUUID() string {
 	return strconv.Itoa(rand.Intn(100000))
 }
 
+
+
 func Start(manager map[string]Job, command string, owner string) (string, string) {
 	// TODO split command on spaces
 	cmd := exec.Command(command) //, "-l")
 
-	// TODO use pipes (are they buffered? maybe use channels?)
-	stderr, err := cmd.StderrPipe()
-	stdout, err := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
+	stdout, _ := cmd.StdoutPipe()
 
 	err = cmd.Start()
 	if err != nil {
+	    log.Fatalf("cmd.Start() failed with '%s'\n", err)
 		return "", err.Error()
 	}
-	go cmd.Wait()
+	//go cmd.Wait()
+	//var errStdout, errStderr error
+	
+
+    var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		stdout, errStdout = copyAndCapture(os.Stdout, stdoutIn)
+		//wg.Done()
+	}()
+    wg.Add(1)
+    go func() {
+	    stderr, errStderr = copyAndCapture(os.Stderr, stderrIn)
+    }()
+	wg.Wait()
+
+	err = cmd.Wait()
+
+
+
+//Output: output, ErrOutput: errOutput
 
 	data := Job{CmdStruct: cmd, StdOut: stdout, StdErr: stderr, Owner: owner}
 
@@ -47,6 +69,30 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 	manager[id] = data
 	return id, ""
 
+}
+
+// https://blog.kowalczyk.info/article/wOYk/advanced-command-execution-in-go-with-osexec.html
+func copyAndCapture(w io.Writer, r io.Reader) ([]byte, error) {
+    var out []byte
+    buf := make([]byte, 1024, 1024)
+    for {
+        n, err := r.Read(buf[:])   // read from reader and store in buffer
+        if n > 0 {
+            d := buf[:n]           
+            out = append(out, d...)  // copy everything to out
+            _, err := w.Write(d)     // and then write it to w
+            if err != nil {
+                return out, err
+            }
+        }
+        if err != nil {
+            // Read returns io.EOF at the end of file, which is not an error for us
+            if err == io.EOF {
+                err = nil
+            }
+            return out, err
+        }
+    }
 }
 
 func Status(manager map[string]Job, jobID string) (string, error) {
