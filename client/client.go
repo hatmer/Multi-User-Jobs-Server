@@ -178,5 +178,5 @@ func main() {
 
 	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
 	//       stop(client, &pb.JobControlRequest{JobID: "1", Request: "stop"})
-	//	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
+		output(client, &pb.JobControlRequest{JobID: "1", Request: "output"})
 }
