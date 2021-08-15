@@ -23,6 +23,7 @@ type JobClient interface {
 	Stop(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error)
 	Status(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error)
 	Stream(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (Job_StreamClient, error)
+	Output(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error)
 }
 
 type jobClient struct {
@@ -92,6 +93,15 @@ func (x *jobStreamClient) Recv() (*Line, error) {
 	return m, nil
 }
 
+func (c *jobClient) Output(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error) {
+	out := new(JobStatus)
+	err := c.cc.Invoke(ctx, "/server.Job/Output", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // JobServer is the server API for Job service.
 // All implementations must embed UnimplementedJobServer
 // for forward compatibility
@@ -101,6 +111,7 @@ type JobServer interface {
 	Stop(context.Context, *JobControlRequest) (*JobStatus, error)
 	Status(context.Context, *JobControlRequest) (*JobStatus, error)
 	Stream(*JobControlRequest, Job_StreamServer) error
+	Output(context.Context, *JobControlRequest) (*JobStatus, error)
 	mustEmbedUnimplementedJobServer()
 }
 
@@ -119,6 +130,9 @@ func (UnimplementedJobServer) Status(context.Context, *JobControlRequest) (*JobS
 }
 func (UnimplementedJobServer) Stream(*JobControlRequest, Job_StreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method Stream not implemented")
+}
+func (UnimplementedJobServer) Output(context.Context, *JobControlRequest) (*JobStatus, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Output not implemented")
 }
 func (UnimplementedJobServer) mustEmbedUnimplementedJobServer() {}
 
@@ -208,6 +222,24 @@ func (x *jobStreamServer) Send(m *Line) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Job_Output_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JobControlRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobServer).Output(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/server.Job/Output",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobServer).Output(ctx, req.(*JobControlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Job_ServiceDesc is the grpc.ServiceDesc for Job service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -226,6 +258,10 @@ var Job_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Status",
 			Handler:    _Job_Status_Handler,
+		},
+		{
+			MethodName: "Output",
+			Handler:    _Job_Output_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

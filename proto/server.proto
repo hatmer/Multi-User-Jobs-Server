@@ -25,6 +25,7 @@ service Job {
   rpc Stop (JobControlRequest) returns (JobStatus) {} 
   rpc Status (JobControlRequest) returns (JobStatus) {} 
   rpc Stream(JobControlRequest) returns (stream Line) {}
+  rpc Output(JobControlRequest) returns (JobStatus) {}
 }
 
 // Request message for starting a job
