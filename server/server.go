@@ -86,6 +86,28 @@ func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobS
 	return &pb.JobStatus{JobID: jobID, Status: res}, err
 }
 
+// Get final output of a job
+func (s *server) Output(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
+	log.Printf("Output of %s", in.GetJobID())
+	p, ok := peer.FromContext(ctx)
+	// TODO verify ownership
+	log.Printf("peer info: %v, %v", p, ok)
+	//owner := "owner"
+
+	jobID := in.GetJobID()
+	res := "job is still running"
+	if != nil {
+	    res = string(cmdData.Output)
+	}
+	log.Printf("Job output result, %v, %v", jobID, res)
+
+	return &pb.JobStatus{JobID: jobID, Status: res}, err
+	    
+	
+	
+	
+}
+
 /*
 func send(stream pb.Job_StreamServer, value string) {
 	if err:= stream.Send(&pb.Line{Text: value}); err != nil {
