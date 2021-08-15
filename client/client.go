@@ -145,13 +145,13 @@ func main() {
 	client := pb.NewJobClient(conn)
 
 	// Looking for a valid feature
-	start(client, &pb.JobStartRequest{Job: "ps"})
+	start(client, &pb.JobStartRequest{Job: "./test.sh"})
 
 	// Looking for features between 40, -75 and 42, -73.
 	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
-	/*stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
+	stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
 
 	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
-        stop(client, &pb.JobControlRequest{JobID: "1", Request: "stop"})
-	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})*/
+ //       stop(client, &pb.JobControlRequest{JobID: "1", Request: "stop"})
+//	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
 }

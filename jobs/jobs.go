@@ -9,11 +9,12 @@ import (
 	"strconv"
 	"log"
 	"sync"
+	"bytes"
 )
 
 type Job struct {
 	CmdStruct *exec.Cmd
-	StdOut    io.ReadCloser
+	StdOut    *bytes.Buffer //io.ReadCloser
 	StdErr    io.ReadCloser
 	Output    []byte
 	OutputErr []byte
@@ -31,7 +32,7 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 	// TODO split command on spaces
 	cmd := exec.Command(command) //, "-l")
 
-	stderrIn, _ := cmd.StderrPipe()
+//	stderrIn, _ := cmd.StderrPipe()
 	stdoutIn, _ := cmd.StdoutPipe()
 
 	err := cmd.Start()
@@ -40,23 +41,30 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 		return "", err.Error()
 	}
 	//go cmd.Wait()
-	var errStdout, errStderr error
+//	var errStdout, errStderr error
+var errStdout error
 	var stdout_copy, stderr_copy []byte
-	streamStdOutR, streamStdOutW := io.Pipe()
-	streamStdErrR, streamStdErrW := io.Pipe()
+	//streamStdOutR, streamStdOutW := io.Pipe()
+	var stdoutbuf bytes.Buffer
+//	streamStdErrR, streamStdErrW := io.Pipe()
 
     var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		stdout_copy, errStdout = copyAndCapture(streamStdOutW, stdoutIn)
+		stdout_copy, errStdout = copyAndCapture(&stdoutbuf, stdoutIn)
+		log.Printf("stdout copyandcapture returned: %s", stdout_copy)
+		//pipeoutput, _ := io.ReadAll(streamStdOutR)
+		//log.Printf("output pipe now contains: %s", string(pipeoutput))
 		//go cmd.Wait()
 		//wg.Done()
 		//wg.Wait()
 	}()
-    wg.Add(1)
-    go func() {
-	    stderr_copy, errStderr = copyAndCapture(streamStdErrW, stderrIn)
-    }()
+	wg.Add(1)
+	go cmd.Wait()
+    //wg.Add(1)
+    //go func() {
+	//    stderr_copy, errStderr = copyAndCapture(streamStdErrW, stderrIn)
+    //}()
 	
 
 	//err = cmd.Wait()
@@ -65,7 +73,7 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 
 //Output: output, ErrOutput: errOutput
 
-        data := Job{CmdStruct: cmd, StdOut: streamStdOutR, StdErr: streamStdErrR, Output: stdout_copy, OutputErr: stderr_copy, Owner: owner}
+        data := Job{CmdStruct: cmd, StdOut: &stdoutbuf, /*StdErr: streamStdErrR,*/ Output: stdout_copy, OutputErr: stderr_copy, Owner: owner}
 
 	// generate an ID and make sure it is unique
 	id := getUUID()
@@ -80,24 +88,31 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 }
 
 // https://blog.kowalczyk.info/article/wOYk/advanced-command-execution-in-go-with-osexec.html
-func copyAndCapture(w io.Writer, r io.Reader) ([]byte, error) {
+func copyAndCapture(b *bytes.Buffer, r io.Reader) ([]byte, error) {
     var out []byte
     buf := make([]byte, 1024, 1024)
     for {
+	    log.Println("looping")
         n, err := r.Read(buf[:])   // read from reader and store in buffer
         if n > 0 {
-            d := buf[:n]           
+		log.Printf("read this from pipe: %s", string(buf))
+            d := buf[:n]
             out = append(out, d...)  // copy everything to out
-            _, err := w.Write(d)     // and then write it to w
+	    log.Println("writing")
+            _, err := b.Write(d)     // and then write it to w
+	    log.Println("write ok")
             if err != nil {
+	        log.Println("returning on write error")
                 return out, err
             }
         }
         if err != nil {
             // Read returns io.EOF at the end of file, which is not an error for us
             if err == io.EOF {
+		    log.Println("got EOF")
                 err = nil
             }
+	    log.Println("returning on read error")
             return out, err
         }
     }

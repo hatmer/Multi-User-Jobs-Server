@@ -25,7 +25,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"google.golang.org/grpc/credentials"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -100,21 +99,26 @@ func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) er
 	//for line := range s.manager[JobID].Output()
 	JobID := in.GetJobID()
 	cmdData := s.manager[JobID]
+	output := make([]byte, 1024)
 
 	for cmdData.CmdStruct.ProcessState == nil { // while the process is still running
-		output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
-		if string(output) != "" {
+		log.Println("streaming...")
+	n, _ := cmdData.StdOut.Read(output) // TODO handle stderr also
+	log.Printf("read %d bytes of output", n)
+		if n > 0 && string(output) != "" {
 			if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
 				return err
 			}
 		}
 		// TODO wait
 	}
-	output, _ := io.ReadAll(cmdData.StdOut) // TODO handle stderr also
-
-	if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
+	log.Println("process completed")
+         n, _ := cmdData.StdOut.Read(output) // TODO handle stderr also
+        log.Printf("read final %d bytes of output", n)
+	if n > 0 {
+		if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
 		return err
-	}
+	}}
 	ret := fmt.Sprintf("Job exited with code: %d", cmdData.CmdStruct.ProcessState.ExitCode())
 	if err := stream.Send(&pb.Line{Text: ret}); err != nil {
 		return err
