@@ -51,12 +51,13 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 		stdout_copy, errStdout = copyAndCapture(streamStdOutW, stdoutIn)
 		//go cmd.Wait()
 		//wg.Done()
+		//wg.Wait()
 	}()
     wg.Add(1)
     go func() {
 	    stderr_copy, errStderr = copyAndCapture(streamStdErrW, stderrIn)
     }()
-	wg.Wait()
+	
 
 	//err = cmd.Wait()
 
