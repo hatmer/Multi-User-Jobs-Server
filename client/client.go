@@ -23,14 +23,14 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"io"
 	"io/ioutil"
 	"log"
-	"fmt"
-	"strings"
 	pb "project/proto"
+	"strings"
 	"time"
 )
 
@@ -55,8 +55,10 @@ func stream(client pb.JobClient, req *pb.JobControlRequest) {
 		}
 		lines := strings.Split(line.GetText(), "\n")
 		for i := 0; i < len(lines); i++ {
-		  fmt.Println(lines[i])
-	        }
+			if len(lines[i]) > 0 {
+				fmt.Println(lines[i])
+			}
+		}
 	}
 	log.Printf("stream complete")
 }
@@ -152,6 +154,6 @@ func main() {
 	stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
 
 	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
- //       stop(client, &pb.JobControlRequest{JobID: "1", Request: "stop"})
-//	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
+	//       stop(client, &pb.JobControlRequest{JobID: "1", Request: "stop"})
+	//	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
 }

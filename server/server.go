@@ -24,13 +24,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 	"io/ioutil"
 	"log"
 	"net"
 	"project/jobs"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/peer"
 	pb "project/proto"
 )
 
@@ -103,22 +103,23 @@ func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) er
 
 	for cmdData.CmdStruct.ProcessState == nil { // while the process is still running
 		log.Println("streaming...")
-	n, _ := cmdData.StdOut.Read(output) // TODO handle stderr also
-	log.Printf("read %d bytes of output", n)
-		if n > 0 && string(output) != "" {
-			if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
+		n, _ := cmdData.StdOut.Read(output) // TODO handle stderr also
+		log.Printf("read %d bytes of output", n)
+		if n > 0 {
+			if err := stream.Send(&pb.Line{Text: string(output)[:n]}); err != nil {
 				return err
 			}
 		}
 		// TODO wait
 	}
 	log.Println("process completed")
-         n, _ := cmdData.StdOut.Read(output) // TODO handle stderr also
-        log.Printf("read final %d bytes of output", n)
+	n, _ := cmdData.StdOut.Read(output) // TODO handle stderr also
+	log.Printf("read final %d bytes of output", n)
 	if n > 0 {
 		if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
-		return err
-	}}
+			return err
+		}
+	}
 	ret := fmt.Sprintf("Job exited with code: %d", cmdData.CmdStruct.ProcessState.ExitCode())
 	if err := stream.Send(&pb.Line{Text: ret}); err != nil {
 		return err
