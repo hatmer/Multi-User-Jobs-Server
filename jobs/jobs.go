@@ -16,8 +16,8 @@ type Job struct {
 	CmdStruct *exec.Cmd
 	StdOut    *bytes.Buffer //io.ReadCloser
 	StdErr    io.ReadCloser
-	Output    []byte
-	OutputErr []byte
+	Output    *[]byte
+	OutputErr *[]byte
 	Owner     string
 }
 
@@ -30,7 +30,7 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 	// TODO split command on spaces
 	cmd := exec.Command(command) //, "-l")
 
-	//	stderrIn, _ := cmd.StderrPipe()
+
 	stdoutIn, _ := cmd.StdoutPipe()
 
 	err := cmd.Start()
@@ -38,26 +38,22 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 		log.Fatalf("cmd.Start() failed with '%s'\n", err)
 		return "", err.Error()
 	}
-	//go cmd.Wait()
+
 	//	var errStdout, errStderr error
 	var errStdout error
-	stderr_copy := make([]byte 1024)
-	//var stdout_copy, stderr_copy []byte
-	stdout_copy := make([]byte, 1073741824) // 1 GB max output
-	//streamStdOutR, streamStdOutW := io.Pipe()
+
+	var stdout_copy, stderr_copy *[]byte
+
 	var stdoutbuf bytes.Buffer
-	//	streamStdErrR, streamStdErrW := io.Pipe()
+	
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		errStdout = copyAndCapture(&stdoutbuf, &stdout_copy, stdoutIn)
 		log.Printf("stdout copyandcapture returned: %s", stdout_copy)
-		//pipeoutput, _ := io.ReadAll(streamStdOutR)
 		//log.Printf("output pipe now contains: %s", string(pipeoutput))
-		//go cmd.Wait()
-		//wg.Done()
-		//wg.Wait()
+		
 	}()
 	wg.Add(1)
 	go cmd.Wait()
@@ -66,7 +62,7 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 	//    stderr_copy, errStderr = copyAndCapture(streamStdErrW, stderrIn)
 	//}()
 
-	//err = cmd.Wait()
+
 
 	//Output: output, ErrOutput: errOutput
 
@@ -85,7 +81,7 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 }
 
 // https://blog.kowalczyk.info/article/wOYk/advanced-command-execution-in-go-with-osexec.html
-func copyAndCapture(b *bytes.Buffer, c *[]byte, r io.Reader) ([]byte, error) {
+func copyAndCapture(b *bytes.Buffer, final_output *[]byte, r io.Reader) error {
 	var out []byte
 	buf := make([]byte, 1024, 1024)
 	for {
@@ -100,7 +96,8 @@ func copyAndCapture(b *bytes.Buffer, c *[]byte, r io.Reader) ([]byte, error) {
 			log.Println("write ok")
 			if err != nil {
 				log.Println("returning on write error")
-				return out, err
+				*final_output = out
+				return err
 			}
 		}
 		if err != nil {
@@ -110,7 +107,8 @@ func copyAndCapture(b *bytes.Buffer, c *[]byte, r io.Reader) ([]byte, error) {
 				err = nil
 			}
 			log.Println("returning on read error")
-			return out, err
+			*final_output = out
+			return err
 		}
 	}
 }

@@ -98,24 +98,14 @@ func (s *server) Output(ctx context.Context, in *pb.JobControlRequest) (*pb.JobS
 	job := s.manager[jobID]
 	res := "job is still running"
 	if job.CmdStruct.ProcessState != nil {
-	    res = string(job.Output)
+	    res = string(*job.Output)
 	}
 	log.Printf("Job output result, %v, %v", jobID, res)
 
 	return &pb.JobStatus{JobID: jobID, Status: res}, nil
 	    
-	
-	
-	
 }
 
-/*
-func send(stream pb.Job_StreamServer, value string) {
-	if err:= stream.Send(&pb.Line{Text: value}); err != nil {
-		return err
-	}
-	return nil
-}*/
 
 // stream output of a job
 func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) error {
