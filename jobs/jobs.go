@@ -41,8 +41,8 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 
 	//	var errStdout, errStderr error
 	var errStdout error
-
-	var stdout_copy, stderr_copy *[]byte
+        stdout_copy := make([]byte, 1024, 1024)
+	var /*stdout_copy,*/ stderr_copy *[]byte
 
 	var stdoutbuf bytes.Buffer
 	
@@ -50,7 +50,7 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		errStdout = copyAndCapture(&stdoutbuf, &stdout_copy, stdoutIn)
+		errStdout = copyAndCapture(&stdoutbuf, stdout_copy, stdoutIn)
 		log.Printf("stdout copyandcapture returned: %s", stdout_copy)
 		//log.Printf("output pipe now contains: %s", string(pipeoutput))
 		
@@ -81,9 +81,9 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 }
 
 // https://blog.kowalczyk.info/article/wOYk/advanced-command-execution-in-go-with-osexec.html
-func copyAndCapture(b *bytes.Buffer, final_output *[]byte, r io.Reader) error {
+func copyAndCapture(b *bytes.Buffer, buf []byte, r io.Reader) error {
 	var out []byte
-	buf := make([]byte, 1024, 1024)
+	//buf := make([]byte, 1024, 1024)
 	for {
 		log.Println("looping")
 		n, err := r.Read(buf[:]) // read from reader and store in buffer
@@ -96,7 +96,7 @@ func copyAndCapture(b *bytes.Buffer, final_output *[]byte, r io.Reader) error {
 			log.Println("write ok")
 			if err != nil {
 				log.Println("returning on write error")
-				*final_output = out
+			//	*final_output = out
 				return err
 			}
 		}
@@ -107,7 +107,7 @@ func copyAndCapture(b *bytes.Buffer, final_output *[]byte, r io.Reader) error {
 				err = nil
 			}
 			log.Println("returning on read error")
-			*final_output = out
+			//*final_output = out
 			return err
 		}
 	}

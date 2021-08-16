@@ -65,7 +65,6 @@ func stream(client pb.JobClient, req *pb.JobControlRequest) {
 }
 
 func printOutput(s string) {
-	log.Println("printing output")
     lines := strings.Split(s, "\n")
 		for i := 0; i < len(lines); i++ {
 			if len(lines[i]) > 0 {
@@ -171,13 +170,13 @@ func main() {
 	client := pb.NewJobClient(conn)
 
 	// Looking for a valid feature
-	start(client, &pb.JobStartRequest{Job: "./test.sh"})
+//	start(client, &pb.JobStartRequest{Job: "ps"})
 
 	// Looking for features between 40, -75 and 42, -73.
 	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
-	stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
+//	stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
 
-	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
+//	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
 	//       stop(client, &pb.JobControlRequest{JobID: "1", Request: "stop"})
 	output(client, &pb.JobControlRequest{JobID: "1", Request: "output"})
 }
