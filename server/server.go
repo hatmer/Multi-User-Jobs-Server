@@ -73,13 +73,12 @@ func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobSta
 
 // Get status of a job
 func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
-	log.Printf("Status of %s", in.GetJobID())
+	jobID := in.GetJobID()
+	log.Printf("Status of %s", jobID)
 	p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
 	log.Printf("peer info: %v, %v", p, ok)
-	//owner := "owner"
 
-	jobID := in.GetJobID()
 	res, err := jobs.Status(s.manager, jobID)
 	log.Printf("Job status result, %v, %v", jobID, res)
 
@@ -88,24 +87,30 @@ func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobS
 
 // Get final output of a job
 func (s *server) Output(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
-	log.Printf("Output of %s", in.GetJobID())
+	jobID := in.GetJobID()
+	log.Printf("Output of %s", jobID)
 	p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
 	log.Printf("peer info: %v, %v", p, ok)
 	//owner := "owner"
 
-	jobID := in.GetJobID()
-	job := s.manager[jobID]
 	res := "job is still running"
-	if job.CmdStruct.ProcessState != nil {
-	    res = string(*job.Output)
+	job, exists := s.manager[jobID]
+	if !exists {
+		res = "job does not exist"
+
+	} else {
+
+		if job.CmdStruct.ProcessState != nil {
+			res = string(*job.Output)
+			res = res + "\n" + string(job.CmdStruct.ProcessState.ExitCode())
+		}
 	}
 	log.Printf("Job output result, %v, %v", jobID, res)
 
 	return &pb.JobStatus{JobID: jobID, Status: res}, nil
-	    
-}
 
+}
 
 // stream output of a job
 func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) error {

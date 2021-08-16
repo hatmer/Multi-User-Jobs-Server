@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	//"os"
 	"bytes"
 	"fmt"
 	"io"
@@ -10,11 +9,12 @@ import (
 	"os/exec"
 	"strconv"
 	"sync"
+	"strings"
 )
 
 type Job struct {
 	CmdStruct *exec.Cmd
-	StdOut    *bytes.Buffer //io.ReadCloser
+	StdOut    *bytes.Buffer
 	StdErr    io.ReadCloser
 	Output    *[]byte
 	OutputErr *[]byte
@@ -27,9 +27,10 @@ func getUUID() string {
 }
 
 func Start(manager map[string]Job, command string, owner string) (string, string) {
-	// TODO split command on spaces
-	cmd := exec.Command(command) //, "-l")
-
+        args := strings.Split(command, " ")
+	cmd := exec.Command(args[0])
+	cmd.Args = args
+	log.Printf("arguments: %s", cmd.Args)
 
 	stdoutIn, _ := cmd.StdoutPipe()
 
@@ -41,11 +42,10 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 
 	//	var errStdout, errStderr error
 	var errStdout error
-        stdout_copy := make([]byte, 1024, 1024)
+	stdout_copy := make([]byte, 1024, 1024)
 	var /*stdout_copy,*/ stderr_copy *[]byte
 
 	var stdoutbuf bytes.Buffer
-	
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -54,6 +54,7 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 		log.Printf("stdout copyandcapture returned: %s", stdout_copy)
 		//log.Printf("output pipe now contains: %s", string(pipeoutput))
 		
+
 	}()
 	wg.Add(1)
 	go cmd.Wait()
@@ -61,8 +62,6 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 	//go func() {
 	//    stderr_copy, errStderr = copyAndCapture(streamStdErrW, stderrIn)
 	//}()
-
-
 
 	//Output: output, ErrOutput: errOutput
 
@@ -96,7 +95,7 @@ func copyAndCapture(b *bytes.Buffer, buf []byte, r io.Reader) error {
 			log.Println("write ok")
 			if err != nil {
 				log.Println("returning on write error")
-			//	*final_output = out
+				//	*final_output = out
 				return err
 			}
 		}
@@ -114,8 +113,10 @@ func copyAndCapture(b *bytes.Buffer, buf []byte, r io.Reader) error {
 }
 
 func Status(manager map[string]Job, jobID string) (string, error) {
-
-	job := manager[jobID]
+	job, exists := manager[jobID]
+	if !exists {
+		return "job does not exist", nil
+	}
 	status := "running"
 
 	if job.CmdStruct.ProcessState != nil {
@@ -126,8 +127,10 @@ func Status(manager map[string]Job, jobID string) (string, error) {
 }
 
 func Stop(manager map[string]Job, jobID string) (string, error) {
-
-	job := manager[jobID]
+	job, exists := manager[jobID]
+	if !exists {
+		return "job does not exist", nil
+	}
 
 	// attempt to stop job
 	if job.CmdStruct.ProcessState != nil {
@@ -143,21 +146,3 @@ func Stop(manager map[string]Job, jobID string) (string, error) {
 
 	return "job stopped", nil
 }
-
-/* TODO multiple clients can stream same output?
-func Stream(command string) <-chan int {
-    out := make(chan int)
-    go func() {
-        defer close(out)
-	cmd := exec.Command(command)
-	stdout, err := cmd.StdoutPipe()
-
-        // while the process continues, read from stdout and stderr into channel
-
-        for _, n := range numbers {
-            out <- n
-        }
-    }()
-    return out
-}
-*/

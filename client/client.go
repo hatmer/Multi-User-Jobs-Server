@@ -39,7 +39,7 @@ const serverAddr = "127.0.0.1:50051"
 // stream streams output of a job
 func stream(client pb.JobClient, req *pb.JobControlRequest) {
 	log.Printf("streaming")
-	ctx, cancel := context.WithCancel(context.Background()) //, 10*time.Second) // TODO timeout for stream?
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stream, err := client.Stream(ctx, req)
 	if err != nil {
@@ -65,12 +65,12 @@ func stream(client pb.JobClient, req *pb.JobControlRequest) {
 }
 
 func printOutput(s string) {
-    lines := strings.Split(s, "\n")
-		for i := 0; i < len(lines); i++ {
-			if len(lines[i]) > 0 {
-				fmt.Println(lines[i])
-			}
+	lines := strings.Split(s, "\n")
+	for i := 0; i < len(lines); i++ {
+		if len(lines[i]) > 0 {
+			fmt.Println(lines[i])
 		}
+	}
 }
 
 // starts a job
@@ -112,14 +112,13 @@ func status(client pb.JobClient, req *pb.JobControlRequest) {
 // gets output of a completed job
 func output(client pb.JobClient, req *pb.JobControlRequest) {
 	log.Printf("Requesting job output")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	resp, err := client.Output(ctx, req)
 	if err != nil {
 		log.Fatalf("%v output fxn err, %v", client, err)
 	}
 	printOutput(resp.GetStatus())
-	//log.Println(resp.GetStatus())
 }
 
 func main() {
@@ -170,13 +169,12 @@ func main() {
 	client := pb.NewJobClient(conn)
 
 	// Looking for a valid feature
-//	start(client, &pb.JobStartRequest{Job: "ps"})
-
+		start(client, &pb.JobStartRequest{Job: "ls -la README.md"})
 	// Looking for features between 40, -75 and 42, -73.
 	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
-//	stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
+	//	stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
 
-//	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
+	//	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
 	//       stop(client, &pb.JobControlRequest{JobID: "1", Request: "stop"})
 	output(client, &pb.JobControlRequest{JobID: "1", Request: "output"})
 }
