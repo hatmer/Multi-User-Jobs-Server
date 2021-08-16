@@ -95,13 +95,14 @@ func (s *server) Output(ctx context.Context, in *pb.JobControlRequest) (*pb.JobS
 	//owner := "owner"
 
 	jobID := in.GetJobID()
+	job := s.manager[jobID]
 	res := "job is still running"
-	if != nil {
-	    res = string(cmdData.Output)
+	if job.CmdStruct.ProcessState != nil {
+	    res = string(job.Output)
 	}
 	log.Printf("Job output result, %v, %v", jobID, res)
 
-	return &pb.JobStatus{JobID: jobID, Status: res}, err
+	return &pb.JobStatus{JobID: jobID, Status: res}, nil
 	    
 	
 	
@@ -118,31 +119,29 @@ func send(stream pb.Job_StreamServer, value string) {
 
 // stream output of a job
 func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) error {
-	//for line := range s.manager[JobID].Output()
-	JobID := in.GetJobID()
-	cmdData := s.manager[JobID]
+	jobID := in.GetJobID()
+	job := s.manager[jobID]
 	output := make([]byte, 1024)
 
-	for cmdData.CmdStruct.ProcessState == nil { // while the process is still running
+	for job.CmdStruct.ProcessState == nil { // while the process is still running
 		log.Println("streaming...")
-		n, _ := cmdData.StdOut.Read(output) // TODO handle stderr also
+		n, _ := job.StdOut.Read(output) // TODO handle stderr also
 		log.Printf("read %d bytes of output", n)
 		if n > 0 {
 			if err := stream.Send(&pb.Line{Text: string(output)[:n]}); err != nil {
 				return err
 			}
 		}
-		// TODO wait
 	}
 	log.Println("process completed")
-	n, _ := cmdData.StdOut.Read(output) // TODO handle stderr also
+	n, _ := job.StdOut.Read(output) // TODO handle stderr also
 	log.Printf("read final %d bytes of output", n)
 	if n > 0 {
 		if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
 			return err
 		}
 	}
-	ret := fmt.Sprintf("Job exited with code: %d", cmdData.CmdStruct.ProcessState.ExitCode())
+	ret := fmt.Sprintf("Job exited with code: %d", job.CmdStruct.ProcessState.ExitCode())
 	if err := stream.Send(&pb.Line{Text: ret}); err != nil {
 		return err
 	}

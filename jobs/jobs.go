@@ -41,7 +41,9 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 	//go cmd.Wait()
 	//	var errStdout, errStderr error
 	var errStdout error
-	var stdout_copy, stderr_copy []byte
+	stderr_copy := make([]byte 1024)
+	//var stdout_copy, stderr_copy []byte
+	stdout_copy := make([]byte, 1073741824) // 1 GB max output
 	//streamStdOutR, streamStdOutW := io.Pipe()
 	var stdoutbuf bytes.Buffer
 	//	streamStdErrR, streamStdErrW := io.Pipe()
@@ -49,7 +51,7 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		stdout_copy, errStdout = copyAndCapture(&stdoutbuf, stdoutIn)
+		errStdout = copyAndCapture(&stdoutbuf, &stdout_copy, stdoutIn)
 		log.Printf("stdout copyandcapture returned: %s", stdout_copy)
 		//pipeoutput, _ := io.ReadAll(streamStdOutR)
 		//log.Printf("output pipe now contains: %s", string(pipeoutput))
@@ -68,7 +70,7 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 
 	//Output: output, ErrOutput: errOutput
 
-	data := Job{CmdStruct: cmd, StdOut: &stdoutbuf /*StdErr: streamStdErrR,*/, Output: stdout_copy, OutputErr: stderr_copy, Owner: owner}
+	data := Job{CmdStruct: cmd, StdOut: &stdoutbuf /*StdErr: streamStdErrR,*/, Output: &stdout_copy, OutputErr: stderr_copy, Owner: owner}
 
 	// generate an ID and make sure it is unique
 	id := getUUID()
@@ -83,7 +85,7 @@ func Start(manager map[string]Job, command string, owner string) (string, string
 }
 
 // https://blog.kowalczyk.info/article/wOYk/advanced-command-execution-in-go-with-osexec.html
-func copyAndCapture(b *bytes.Buffer, r io.Reader) ([]byte, error) {
+func copyAndCapture(b *bytes.Buffer, c *[]byte, r io.Reader) ([]byte, error) {
 	var out []byte
 	buf := make([]byte, 1024, 1024)
 	for {

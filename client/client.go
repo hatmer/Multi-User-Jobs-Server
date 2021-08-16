@@ -39,7 +39,7 @@ const serverAddr = "127.0.0.1:50051"
 // stream streams output of a job
 func stream(client pb.JobClient, req *pb.JobControlRequest) {
 	log.Printf("streaming")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // TODO timeout for stream?
+	ctx, cancel := context.WithCancel(context.Background()) //, 10*time.Second) // TODO timeout for stream?
 	defer cancel()
 	stream, err := client.Stream(ctx, req)
 	if err != nil {
@@ -65,6 +65,7 @@ func stream(client pb.JobClient, req *pb.JobControlRequest) {
 }
 
 func printOutput(s string) {
+	log.Println("printing output")
     lines := strings.Split(s, "\n")
 		for i := 0; i < len(lines); i++ {
 			if len(lines[i]) > 0 {
@@ -178,5 +179,5 @@ func main() {
 
 	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
 	//       stop(client, &pb.JobControlRequest{JobID: "1", Request: "stop"})
-		output(client, &pb.JobControlRequest{JobID: "1", Request: "output"})
+	output(client, &pb.JobControlRequest{JobID: "1", Request: "output"})
 }
