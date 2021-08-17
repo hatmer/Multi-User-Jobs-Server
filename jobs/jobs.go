@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"sync"
 	"strings"
+	"github.com/google/uuid"
 )
 
 type Job struct {
@@ -22,8 +23,7 @@ type Job struct {
 }
 
 func getUUID() string {
-	// random number for simplicity but should be a UUID
-	return strconv.Itoa(rand.Intn(100000))
+	return uuid.New().String()
 }
 
 func Start(manager map[string]Job, command string, owner string) (string, string) {
