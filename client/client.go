@@ -1,22 +1,3 @@
-/*
- *
- * Copyright 2015 gRPC authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
-
-// Package main implements a client for Greeter service.
 package main
 
 import (
@@ -126,13 +107,13 @@ func main() {
 	// TODO read args: start/stop/status/stream jobID
 
 	// Load the client certificate and its key
-	clientCert, err := tls.LoadX509KeyPair("client.pem", "client.key")
+	clientCert, err := tls.LoadX509KeyPair("creds/client.pem", "creds/client.key")
 	if err != nil {
 		log.Fatalf("Failed to load client certificate and key. %s.", err)
 	}
 
 	// Load the CA certificate
-	trustedCert, err := ioutil.ReadFile("cacert.pem")
+	trustedCert, err := ioutil.ReadFile("creds/cacert.pem")
 	if err != nil {
 		log.Fatalf("Failed to load trusted certificate. %s.", err)
 	}

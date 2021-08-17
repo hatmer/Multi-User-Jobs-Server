@@ -1,22 +1,3 @@
-/*
- *
- * Copyright 2015 gRPC authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
-
-// Package main implements a server for API service.
 package main
 
 import (
@@ -36,8 +17,8 @@ import (
 
 const (
 	port     = ":50051"
-	certFile = "server.crt"
-	keyFile  = "server.pem"
+	certFile = "creds/server.crt"
+	keyFile  = "creds/server.pem"
 )
 
 type server struct {
@@ -146,13 +127,13 @@ func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) er
 
 func main() {
 	// Load the server certificate and its key
-	serverCert, err := tls.LoadX509KeyPair("server.pem", "server.key")
+	serverCert, err := tls.LoadX509KeyPair("creds/server.pem", "creds/server.key")
 	if err != nil {
 		log.Fatalf("Failed to load server certificate and key. %s.", err)
 	}
 
 	// Load the CA certificate
-	trustedCert, err := ioutil.ReadFile("cacert.pem")
+	trustedCert, err := ioutil.ReadFile("creds/cacert.pem")
 	if err != nil {
 		log.Fatalf("Failed to load trusted certificate. %s.", err)
 	}
