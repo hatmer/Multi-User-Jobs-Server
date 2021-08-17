@@ -82,7 +82,7 @@ func start(client pb.JobClient, req *pb.JobStartRequest) {
 	if err != nil {
 		log.Fatalf("%v start fxn err, %v", client, err)
 	}
-	log.Println(resp.GetStatus())
+	log.Println(resp.GetResponse())
 }
 
 // stops a job
@@ -94,7 +94,7 @@ func stop(client pb.JobClient, req *pb.JobControlRequest) {
 	if err != nil {
 		log.Fatalf("%v stop fxn err, %v", client, err)
 	}
-	log.Println(resp.GetStatus())
+	log.Println(resp.GetResponse())
 }
 
 // gets status of a job
@@ -106,7 +106,7 @@ func status(client pb.JobClient, req *pb.JobControlRequest) {
 	if err != nil {
 		log.Fatalf("%v stop fxn err, %v", client, err)
 	}
-	log.Println(resp.GetStatus())
+	log.Println(resp.GetResponse())
 }
 
 // gets output of a completed job
@@ -118,7 +118,7 @@ func output(client pb.JobClient, req *pb.JobControlRequest) {
 	if err != nil {
 		log.Fatalf("%v output fxn err, %v", client, err)
 	}
-	printOutput(resp.GetStatus())
+	printOutput(resp.GetResponse())
 }
 
 func main() {

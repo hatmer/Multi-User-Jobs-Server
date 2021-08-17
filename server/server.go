@@ -46,18 +46,18 @@ type server struct {
 }
 
 // Start a job
-func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobStatus, error) {
+func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobInfo, error) {
 	log.Printf("Received: %v", in.GetJob())
 	// TODO input sanitization?
 	p, ok := peer.FromContext(ctx)
 	log.Printf("peer info: %v, %v", p, ok)
 	jobID, res := jobs.Start(s.manager, in.GetJob(), "owner")
 	log.Printf("JobID, Result: %v, %v", jobID, res)
-	return &pb.JobStatus{JobID: jobID, Status: res}, nil
+	return &pb.JobInfo{JobID: jobID, Response: res}, nil
 }
 
 // Stop a job
-func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
+func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInfo, error) {
 	//log.Printf("Received: %v", in.GetJob())
 	p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
@@ -68,11 +68,11 @@ func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobSta
 	res, err := jobs.Stop(s.manager, jobID)
 	log.Printf("Job stop result, %v, %v", jobID, res)
 
-	return &pb.JobStatus{JobID: jobID, Status: res}, err // TODO better error passing around
+	return &pb.JobInfo{JobID: jobID, Response: res}, err // TODO better error passing around
 }
 
 // Get status of a job
-func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
+func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInfo, error) {
 	jobID := in.GetJobID()
 	log.Printf("Status of %s", jobID)
 	p, ok := peer.FromContext(ctx)
@@ -82,11 +82,11 @@ func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobS
 	res, err := jobs.Status(s.manager, jobID)
 	log.Printf("Job status result, %v, %v", jobID, res)
 
-	return &pb.JobStatus{JobID: jobID, Status: res}, err
+	return &pb.JobInfo{JobID: jobID, Response: res}, err
 }
 
 // Get final output of a job
-func (s *server) Output(ctx context.Context, in *pb.JobControlRequest) (*pb.JobStatus, error) {
+func (s *server) Output(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInfo, error) {
 	jobID := in.GetJobID()
 	log.Printf("Output of %s", jobID)
 	p, ok := peer.FromContext(ctx)
@@ -108,7 +108,7 @@ func (s *server) Output(ctx context.Context, in *pb.JobControlRequest) (*pb.JobS
 	}
 	log.Printf("Job output result, %v, %v", jobID, res)
 
-	return &pb.JobStatus{JobID: jobID, Status: res}, nil
+	return &pb.JobInfo{JobID: jobID, Response: res}, nil
 
 }
 

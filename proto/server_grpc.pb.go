@@ -19,11 +19,11 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type JobClient interface {
 	// Starts a job
-	Start(ctx context.Context, in *JobStartRequest, opts ...grpc.CallOption) (*JobStatus, error)
-	Stop(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error)
-	Status(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error)
+	Start(ctx context.Context, in *JobStartRequest, opts ...grpc.CallOption) (*JobInfo, error)
+	Stop(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobInfo, error)
+	Status(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobInfo, error)
 	Stream(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (Job_StreamClient, error)
-	Output(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error)
+	Output(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobInfo, error)
 }
 
 type jobClient struct {
@@ -34,8 +34,8 @@ func NewJobClient(cc grpc.ClientConnInterface) JobClient {
 	return &jobClient{cc}
 }
 
-func (c *jobClient) Start(ctx context.Context, in *JobStartRequest, opts ...grpc.CallOption) (*JobStatus, error) {
-	out := new(JobStatus)
+func (c *jobClient) Start(ctx context.Context, in *JobStartRequest, opts ...grpc.CallOption) (*JobInfo, error) {
+	out := new(JobInfo)
 	err := c.cc.Invoke(ctx, "/server.Job/Start", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -43,8 +43,8 @@ func (c *jobClient) Start(ctx context.Context, in *JobStartRequest, opts ...grpc
 	return out, nil
 }
 
-func (c *jobClient) Stop(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error) {
-	out := new(JobStatus)
+func (c *jobClient) Stop(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobInfo, error) {
+	out := new(JobInfo)
 	err := c.cc.Invoke(ctx, "/server.Job/Stop", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -52,8 +52,8 @@ func (c *jobClient) Stop(ctx context.Context, in *JobControlRequest, opts ...grp
 	return out, nil
 }
 
-func (c *jobClient) Status(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error) {
-	out := new(JobStatus)
+func (c *jobClient) Status(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobInfo, error) {
+	out := new(JobInfo)
 	err := c.cc.Invoke(ctx, "/server.Job/Status", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -93,8 +93,8 @@ func (x *jobStreamClient) Recv() (*Line, error) {
 	return m, nil
 }
 
-func (c *jobClient) Output(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobStatus, error) {
-	out := new(JobStatus)
+func (c *jobClient) Output(ctx context.Context, in *JobControlRequest, opts ...grpc.CallOption) (*JobInfo, error) {
+	out := new(JobInfo)
 	err := c.cc.Invoke(ctx, "/server.Job/Output", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -107,11 +107,11 @@ func (c *jobClient) Output(ctx context.Context, in *JobControlRequest, opts ...g
 // for forward compatibility
 type JobServer interface {
 	// Starts a job
-	Start(context.Context, *JobStartRequest) (*JobStatus, error)
-	Stop(context.Context, *JobControlRequest) (*JobStatus, error)
-	Status(context.Context, *JobControlRequest) (*JobStatus, error)
+	Start(context.Context, *JobStartRequest) (*JobInfo, error)
+	Stop(context.Context, *JobControlRequest) (*JobInfo, error)
+	Status(context.Context, *JobControlRequest) (*JobInfo, error)
 	Stream(*JobControlRequest, Job_StreamServer) error
-	Output(context.Context, *JobControlRequest) (*JobStatus, error)
+	Output(context.Context, *JobControlRequest) (*JobInfo, error)
 	mustEmbedUnimplementedJobServer()
 }
 
@@ -119,19 +119,19 @@ type JobServer interface {
 type UnimplementedJobServer struct {
 }
 
-func (UnimplementedJobServer) Start(context.Context, *JobStartRequest) (*JobStatus, error) {
+func (UnimplementedJobServer) Start(context.Context, *JobStartRequest) (*JobInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
 }
-func (UnimplementedJobServer) Stop(context.Context, *JobControlRequest) (*JobStatus, error) {
+func (UnimplementedJobServer) Stop(context.Context, *JobControlRequest) (*JobInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
-func (UnimplementedJobServer) Status(context.Context, *JobControlRequest) (*JobStatus, error) {
+func (UnimplementedJobServer) Status(context.Context, *JobControlRequest) (*JobInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
 }
 func (UnimplementedJobServer) Stream(*JobControlRequest, Job_StreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method Stream not implemented")
 }
-func (UnimplementedJobServer) Output(context.Context, *JobControlRequest) (*JobStatus, error) {
+func (UnimplementedJobServer) Output(context.Context, *JobControlRequest) (*JobInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Output not implemented")
 }
 func (UnimplementedJobServer) mustEmbedUnimplementedJobServer() {}

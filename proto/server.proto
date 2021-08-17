@@ -21,11 +21,11 @@ package server;
 // The jobs service definition.
 service Job {
   // Starts a job
-  rpc Start (JobStartRequest) returns (JobStatus) {}
-  rpc Stop (JobControlRequest) returns (JobStatus) {} 
-  rpc Status (JobControlRequest) returns (JobStatus) {} 
+  rpc Start (JobStartRequest) returns (JobInfo) {}
+  rpc Stop (JobControlRequest) returns (JobInfo) {} 
+  rpc Status (JobControlRequest) returns (JobInfo) {} 
   rpc Stream(JobControlRequest) returns (stream Line) {}
-  rpc Output(JobControlRequest) returns (JobStatus) {}
+  rpc Output(JobControlRequest) returns (JobInfo) {}
 }
 
 // Request message for starting a job
@@ -33,11 +33,11 @@ message JobStartRequest {
   string job = 1;
 }
 
-// Response message containing the JobID and current state of job
-// returned after start, stop or query message
-message JobStatus {
+// Response message containing the JobID and requested information about job
+// returned after start, stop, output, or status query message
+message JobInfo {
   string jobID = 1;
-  string status = 2;   // current status of job
+  string response = 2; 
 }
 
 // Message for stopping and getting information about submitted jobs
