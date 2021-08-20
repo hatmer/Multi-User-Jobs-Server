@@ -104,6 +104,10 @@ func printUsage() {
 func main() {
 	args := os.Args
 	var param string
+	if len(args) == 1 {
+		printUsage()
+		return
+	}
 	op := args[1]
 	if op != "start" && len(args) != 3 {
 		printUsage()
@@ -116,6 +120,7 @@ func main() {
 		param = args[2]
 	} else {
 		printUsage()
+		return
 	}
 
 	// Load the client certificate and its key
