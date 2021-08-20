@@ -150,7 +150,7 @@ func main() {
 	client := pb.NewJobClient(conn)
 
 	// Looking for a valid feature
-		start(client, &pb.JobStartRequest{Job: "ls -la README.md"})
+//		start(client, &pb.JobStartRequest{Job: "ls -la README.md"})
 	// Looking for features between 40, -75 and 42, -73.
 	status(client, &pb.JobControlRequest{JobID: "1", Request: "status"})
 	//	stream(client, &pb.JobControlRequest{JobID: "1", Request: "stream"})
