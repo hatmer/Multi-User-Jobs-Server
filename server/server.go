@@ -28,24 +28,29 @@ type server struct {
 
 // Start a job
 func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobInfo, error) {
-	log.Printf("Received: %v", in.GetJob())
-	// TODO input sanitization?
-	p, ok := peer.FromContext(ctx)
-	log.Printf("peer info: %v, %v", p, ok)
-	jobID, res := jobs.Start(s.manager, in.GetJob(), "owner")
-	log.Printf("JobID, Result: %v, %v", jobID, res)
-	return &pb.JobInfo{JobID: jobID, Response: res}, nil
+	// TODO input sanitization
+	job := in.GetJob()
+	log.Printf("Received start request: %v", job)
+	//p, ok := peer.FromContext(ctx)
+	//log.Printf("peer info: %v, %v", p, ok)
+	jobID, err := jobs.Start(s.manager, job, "owner")
+	//log.Printf("JobID, Result: %v, %v", jobID, res)
+	res := "job started"
+	if err != nil {
+	    res = "job failed to start"
+	}
+	return &pb.JobInfo{JobID: jobID, Response: res}, err
 }
 
 // Stop a job
 func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInfo, error) {
-	//log.Printf("Received: %v", in.GetJob())
-	p, ok := peer.FromContext(ctx)
+    // TODO input sanitization
+    jobID := in.GetJobID()
+	log.Printf("Received stop request for job: %v", jobID)
+	//p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
-	log.Printf("peer info: %v, %v", p, ok)
+	//log.Printf("peer info: %v, %v", p, ok)
 	//owner := "owner"
-	jobID := in.GetJobID()
-
 	res, err := jobs.Stop(s.manager, jobID)
 	log.Printf("Job stop result, %v, %v", jobID, res)
 
@@ -54,11 +59,12 @@ func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInf
 
 // Get status of a job
 func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInfo, error) {
+    // TODO input sanitization
 	jobID := in.GetJobID()
-	log.Printf("Status of %s", jobID)
-	p, ok := peer.FromContext(ctx)
+	log.Printf("Received status request for job: %s", jobID)
+	//p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
-	log.Printf("peer info: %v, %v", p, ok)
+	//log.Printf("peer info: %v, %v", p, ok)
 
 	res, err := jobs.Status(s.manager, jobID)
 	log.Printf("Job status result, %v, %v", jobID, res)
@@ -68,18 +74,18 @@ func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobI
 
 // Get final output of a job
 func (s *server) Output(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInfo, error) {
+    // TODO input sanitization
 	jobID := in.GetJobID()
-	log.Printf("Output of %s", jobID)
-	p, ok := peer.FromContext(ctx)
+	log.Printf("Received output request for job: %s", jobID)
+	//p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
-	log.Printf("peer info: %v, %v", p, ok)
-	//owner := "owner"
-
-	res := "job is still running"
+	//log.Printf("peer info: %v, %v", p, ok)
+err := nil
+	res := "no output yet: job is still running"
 	job, exists := s.manager[jobID]
 	if !exists {
 		res = "job does not exist"
-
+		err = error.New("invalid job ID")
 	} else {
 
 		if job.CmdStruct.ProcessState != nil {
@@ -87,15 +93,18 @@ func (s *server) Output(ctx context.Context, in *pb.JobControlRequest) (*pb.JobI
 			res = res + "\n" + string(job.CmdStruct.ProcessState.ExitCode())
 		}
 	}
-	log.Printf("Job output result, %v, %v", jobID, res)
+	//log.Printf("Job output result, %v, %v", jobID, res)
 
-	return &pb.JobInfo{JobID: jobID, Response: res}, nil
+	return &pb.JobInfo{JobID: jobID, Response: res}, err
 
 }
 
 // stream output of a job
 func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) error {
+    // TODO input sanitization
+    // TODO verify ownership
 	jobID := in.GetJobID()
+	log.Printf("Received stream request for job: %s", jobID)
 	job := s.manager[jobID]
 	output := make([]byte, 1024)
 

@@ -9,12 +9,13 @@ import (
 	"sync"
 	"strings"
 	"github.com/google/uuid"
+	"error"
 )
 
 type Job struct {
 	CmdStruct *exec.Cmd
 	StdOut    *bytes.Buffer
-	StdErr    io.ReadCloser
+	StdErr    *bytes.Buffer
 	Output    *[]byte
 	OutputErr *[]byte
 	Owner     string
@@ -24,87 +25,73 @@ func getUUID() string {
 	return uuid.New().String()
 }
 
-func Start(manager map[string]Job, command string, owner string) (string, string) {
-        args := strings.Split(command, " ")
+func Start(manager map[string]Job, command string, owner string) (string, error) {
+    command = "unshare -m -n -p " + command
+    args := strings.Split(command, " ") // TODO use regex if jobs might contain spaces
 	cmd := exec.Command(args[0])
 	cmd.Args = args
-	log.Printf("arguments: %s", cmd.Args)
-
+	
 	stdoutIn, _ := cmd.StdoutPipe()
+	stderrIn, _ := cmd.StderrPipe()
 
 	err := cmd.Start()
 	if err != nil {
 		log.Fatalf("cmd.Start() failed with '%s'\n", err)
-		return "", err.Error()
+		return "", err
 	}
 
-	//	var errStdout, errStderr error
-	var errStdout error
+	var errStdout, errStderr error
+
 	stdout_copy := make([]byte, 1024, 1024)
-	var /*stdout_copy,*/ stderr_copy *[]byte
+	stderr_copy := make([]byte, 1024, 1024)
 
 	var stdoutbuf bytes.Buffer
+	var stderrbuf bytes.Buffer
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		errStdout = copyAndCapture(&stdoutbuf, stdout_copy, stdoutIn)
-		log.Printf("stdout copyandcapture returned: %s", stdout_copy)
-		//log.Printf("output pipe now contains: %s", string(pipeoutput))
-		
-
 	}()
 	wg.Add(1)
-	go cmd.Wait()
-	//wg.Add(1)
-	//go func() {
-	//    stderr_copy, errStderr = copyAndCapture(streamStdErrW, stderrIn)
-	//}()
-
-	//Output: output, ErrOutput: errOutput
-
-	data := Job{CmdStruct: cmd, StdOut: &stdoutbuf /*StdErr: streamStdErrR,*/, Output: &stdout_copy, OutputErr: stderr_copy, Owner: owner}
+	go func() {
+	    errStderr = copyAndCapture(&stderrbuf, stderr_copy, stderrIn)
+	}()
+    wg.Add(1)
+    go cmd.Wait()
+    
+	data := Job{CmdStruct: cmd, StdOut: &stdoutbuf, StdErr: &stderrbuf, Output: &stdout_copy, OutputErr: &stderr_copy, Owner: owner}
 
 	// generate an ID and make sure it is unique
 	id := getUUID()
-	id = "1" // TODO fix
-	//for manager[id] != nil {
-	//	id = getUUID()
-	//}
+	
+	/*for manager[id] != nil {
+		id = getUUID()
+	}*/
 
 	manager[id] = data
-	return id, ""
+	return id, nil
 
 }
 
 // https://blog.kowalczyk.info/article/wOYk/advanced-command-execution-in-go-with-osexec.html
 func copyAndCapture(b *bytes.Buffer, buf []byte, r io.Reader) error {
 	var out []byte
-	//buf := make([]byte, 1024, 1024)
 	for {
-		log.Println("looping")
 		n, err := r.Read(buf[:]) // read from reader and store in buffer
 		if n > 0 {
-			log.Printf("read this from pipe: %s", string(buf))
 			d := buf[:n]
 			out = append(out, d...) // copy everything to out
-			log.Println("writing")
 			_, err := b.Write(d) // and then write it to w
-			log.Println("write ok")
 			if err != nil {
-				log.Println("returning on write error")
-				//	*final_output = out
 				return err
 			}
 		}
 		if err != nil {
 			// Read returns io.EOF at the end of file, which is not an error for us
 			if err == io.EOF {
-				log.Println("got EOF")
 				err = nil
 			}
-			log.Println("returning on read error")
-			//*final_output = out
 			return err
 		}
 	}
@@ -113,7 +100,7 @@ func copyAndCapture(b *bytes.Buffer, buf []byte, r io.Reader) error {
 func Status(manager map[string]Job, jobID string) (string, error) {
 	job, exists := manager[jobID]
 	if !exists {
-		return "job does not exist", nil
+		return "job does not exist", error.New("invalid job ID")
 	}
 	status := "running"
 
@@ -127,12 +114,12 @@ func Status(manager map[string]Job, jobID string) (string, error) {
 func Stop(manager map[string]Job, jobID string) (string, error) {
 	job, exists := manager[jobID]
 	if !exists {
-		return "job does not exist", nil
+		return "cannot stop job", error.New("invalid job ID")
 	}
 
 	// attempt to stop job
 	if job.CmdStruct.ProcessState != nil {
-		return "job already stopped", nil
+		return "cannot stop job: job is not running", error.New("job is not running")
 	}
 
 	err := job.CmdStruct.Process.Kill()
@@ -142,5 +129,5 @@ func Stop(manager map[string]Job, jobID string) (string, error) {
 		return "error occured while stopping job", err
 	}
 
-	return "job stopped", nil
+	return "job stopped successfully", nil
 }
