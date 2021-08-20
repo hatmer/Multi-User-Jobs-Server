@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/peer"
+	//"google.golang.org/grpc/peer"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net"
@@ -37,15 +38,15 @@ func (s *server) Start(ctx context.Context, in *pb.JobStartRequest) (*pb.JobInfo
 	//log.Printf("JobID, Result: %v, %v", jobID, res)
 	res := "job started"
 	if err != nil {
-	    res = "job failed to start"
+		res = "job failed to start"
 	}
 	return &pb.JobInfo{JobID: jobID, Response: res}, err
 }
 
 // Stop a job
 func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInfo, error) {
-    // TODO input sanitization
-    jobID := in.GetJobID()
+	// TODO input sanitization
+	jobID := in.GetJobID()
 	log.Printf("Received stop request for job: %v", jobID)
 	//p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
@@ -59,7 +60,7 @@ func (s *server) Stop(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInf
 
 // Get status of a job
 func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInfo, error) {
-    // TODO input sanitization
+	// TODO input sanitization
 	jobID := in.GetJobID()
 	log.Printf("Received status request for job: %s", jobID)
 	//p, ok := peer.FromContext(ctx)
@@ -67,31 +68,32 @@ func (s *server) Status(ctx context.Context, in *pb.JobControlRequest) (*pb.JobI
 	//log.Printf("peer info: %v, %v", p, ok)
 
 	res, err := jobs.Status(s.manager, jobID)
-	log.Printf("Job status result, %v, %v", jobID, res)
+	//log.Printf("Job status result, %v, %v", jobID, res)
 
 	return &pb.JobInfo{JobID: jobID, Response: res}, err
 }
 
 // Get final output of a job
 func (s *server) Output(ctx context.Context, in *pb.JobControlRequest) (*pb.JobInfo, error) {
-    // TODO input sanitization
+	// TODO input sanitization
 	jobID := in.GetJobID()
 	log.Printf("Received output request for job: %s", jobID)
 	//p, ok := peer.FromContext(ctx)
 	// TODO verify ownership
 	//log.Printf("peer info: %v, %v", p, ok)
-err := nil
 	res := "no output yet: job is still running"
 	job, exists := s.manager[jobID]
+	err := errors.New("invalid job ID")
 	if !exists {
 		res = "job does not exist"
-		err = error.New("invalid job ID")
 	} else {
 
 		if job.CmdStruct.ProcessState != nil {
 			res = string(*job.Output)
 			res = res + "\n" + string(job.CmdStruct.ProcessState.ExitCode())
+
 		}
+		err = nil
 	}
 	//log.Printf("Job output result, %v, %v", jobID, res)
 
@@ -101,31 +103,28 @@ err := nil
 
 // stream output of a job
 func (s *server) Stream(in *pb.JobControlRequest, stream pb.Job_StreamServer) error {
-    // TODO input sanitization
-    // TODO verify ownership
+	// TODO input sanitization
+	// TODO verify ownership
 	jobID := in.GetJobID()
 	log.Printf("Received stream request for job: %s", jobID)
 	job := s.manager[jobID]
 	output := make([]byte, 1024)
 
 	for job.CmdStruct.ProcessState == nil { // while the process is still running
-		log.Println("streaming...")
 		n, _ := job.StdOut.Read(output) // TODO handle stderr also
-		log.Printf("read %d bytes of output", n)
 		if n > 0 {
 			if err := stream.Send(&pb.Line{Text: string(output)[:n]}); err != nil {
 				return err
 			}
 		}
 	}
-	log.Println("process completed")
+	/* tradeoff: allow streaming a completed job once v.s. only allow streaming of running jobs
 	n, _ := job.StdOut.Read(output) // TODO handle stderr also
-	log.Printf("read final %d bytes of output", n)
 	if n > 0 {
 		if err := stream.Send(&pb.Line{Text: string(output)}); err != nil {
 			return err
 		}
-	}
+	}*/
 	ret := fmt.Sprintf("Job exited with code: %d", job.CmdStruct.ProcessState.ExitCode())
 	if err := stream.Send(&pb.Line{Text: ret}); err != nil {
 		return err

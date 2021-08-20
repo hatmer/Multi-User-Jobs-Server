@@ -10,10 +10,10 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	pb "project/proto"
 	"strings"
 	"time"
-	"os"
 )
 
 const serverAddr = "127.0.0.1:50051"
@@ -25,7 +25,7 @@ func stream(client pb.JobClient, req *pb.JobControlRequest) {
 	defer cancel()
 	stream, err := client.Stream(ctx, req)
 	if err != nil {
-		log.Fatalf("%v stream fxn error, %v", client, err)
+		log.Fatal(err)
 	}
 	for {
 		line, err := stream.Recv()
@@ -33,11 +33,11 @@ func stream(client pb.JobClient, req *pb.JobControlRequest) {
 			break
 		}
 		if err != nil {
-			log.Fatalf("%v stream recv error, %v", client, err)
+			log.Fatal(err)
 		}
 		printOutput(line.GetText())
 	}
-	log.Printf("stream complete")
+	//log.Printf("stream complete")
 }
 
 func printOutput(s string) {
@@ -51,14 +51,14 @@ func printOutput(s string) {
 
 // starts a job
 func start(client pb.JobClient, req *pb.JobStartRequest) {
-    log.Printf("Starting job")
+	log.Printf("Starting job")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	resp, err := client.Start(ctx, req)
 	if err != nil {
-		log.Fatalf("%v start fxn err, %v", client, err)
+		log.Fatal(err)
 	}
-	log.Println(resp.GetResponse())
+	log.Printf("JobID: %s, response: %s", resp.GetJobID(), resp.GetResponse())
 }
 
 // stops a job
@@ -68,19 +68,19 @@ func stop(client pb.JobClient, req *pb.JobControlRequest) {
 	defer cancel()
 	resp, err := client.Stop(ctx, req)
 	if err != nil {
-		log.Fatalf("%v stop fxn err, %v", client, err)
+		log.Fatal(err)
 	}
 	log.Println(resp.GetResponse())
 }
 
 // gets status of a job
 func status(client pb.JobClient, req *pb.JobControlRequest) {
-	log.Println("Status")
+	log.Println("Requesting status")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	resp, err := client.Status(ctx, req)
 	if err != nil {
-		log.Fatalf("%v stop fxn err, %v", client, err)
+		log.Fatal(err)
 	}
 	log.Println(resp.GetResponse())
 }
@@ -92,27 +92,32 @@ func output(client pb.JobClient, req *pb.JobControlRequest) {
 	defer cancel()
 	resp, err := client.Output(ctx, req)
 	if err != nil {
-		log.Fatalf("%v output fxn err, %v", client, err)
+		log.Fatal(err)
 	}
 	printOutput(resp.GetResponse())
 }
 
 func printUsage() {
-    log.Print("usage: \n\t go run client.go start <job> \n\t go run client.go <stop/status/stream/output> <jobID>")
+	log.Print("usage: \n\t go run client.go start <job> \n\t go run client.go <stop/status/stream/output> <jobID>")
 }
 
 func main() {
-
-	args = os.Args
-	if len(args) != 3 {
-	    printUsage()
-	    return
+	args := os.Args
+	var param string
+	op := args[1]
+	if op != "start" && len(args) != 3 {
+		printUsage()
+		return
+	} else if op == "start" {
+		if len(args) >= 3 {
+			param = strings.Join(args[2:], "<magic6789>") // bitcoin-inspired terrible
+		}
+	} else if op == "stop" || op == "status" || op == "output" || op == "stream" {
+		param = args[2]
+	} else {
+		printUsage()
 	}
-	op = args[1]
-	param = args[2]
-	
-	// TODO ensure that op is in ['stop','status','start','stream','output']
-	
+
 	// Load the client certificate and its key
 	clientCert, err := tls.LoadX509KeyPair("creds/client.pem", "creds/client.key")
 	if err != nil {
@@ -156,16 +161,15 @@ func main() {
 
 	client := pb.NewJobClient(conn)
 
-    if op == "start" {
-	  start(client, &pb.JobStartRequest{Job: param})
-    } else if op == "status" {
-	  status(client, &pb.JobControlRequest{JobID: param, Request: "status"})
-    } else if op == "stop" {
-        stop(client, &pb.JobControlRequest{JobID: param, Request: "stop"})
-    } else if op == "output" {
-        output(client, &pb.JobControlRequest{JobID: param, Request: "output"})
-    } else if op == "stream" {
-        stream(client, &pb.JobControlRequest{JobID: param, Request: "stream"})
-    }
-	
+	if op == "start" {
+		start(client, &pb.JobStartRequest{Job: param})
+	} else if op == "status" {
+		status(client, &pb.JobControlRequest{JobID: param, Request: "status"})
+	} else if op == "stop" {
+		stop(client, &pb.JobControlRequest{JobID: param, Request: "stop"})
+	} else if op == "output" {
+		output(client, &pb.JobControlRequest{JobID: param, Request: "output"})
+	} else if op == "stream" {
+		stream(client, &pb.JobControlRequest{JobID: param, Request: "stream"})
+	}
 }

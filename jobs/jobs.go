@@ -2,14 +2,14 @@ package jobs
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"log"
 	"os/exec"
-	"sync"
 	"strings"
-	"github.com/google/uuid"
-	"error"
+	"sync"
 )
 
 type Job struct {
@@ -26,17 +26,17 @@ func getUUID() string {
 }
 
 func Start(manager map[string]Job, command string, owner string) (string, error) {
-    command = "unshare -m -n -p " + command
-    args := strings.Split(command, " ") // TODO use regex if jobs might contain spaces
+	//command = "unshare -m -n -p " + command
+	args := strings.Split(command, "<magic6789>")
 	cmd := exec.Command(args[0])
 	cmd.Args = args
-	
+
 	stdoutIn, _ := cmd.StdoutPipe()
 	stderrIn, _ := cmd.StderrPipe()
 
 	err := cmd.Start()
 	if err != nil {
-		log.Fatalf("cmd.Start() failed with '%s'\n", err)
+		log.Printf("cmd.Start() failed with '%s'\n", err)
 		return "", err
 	}
 
@@ -55,16 +55,16 @@ func Start(manager map[string]Job, command string, owner string) (string, error)
 	}()
 	wg.Add(1)
 	go func() {
-	    errStderr = copyAndCapture(&stderrbuf, stderr_copy, stderrIn)
+		errStderr = copyAndCapture(&stderrbuf, stderr_copy, stderrIn)
 	}()
-    wg.Add(1)
-    go cmd.Wait()
-    
+	wg.Add(1)
+	go cmd.Wait()
+
 	data := Job{CmdStruct: cmd, StdOut: &stdoutbuf, StdErr: &stderrbuf, Output: &stdout_copy, OutputErr: &stderr_copy, Owner: owner}
 
 	// generate an ID and make sure it is unique
 	id := getUUID()
-	
+
 	/*for manager[id] != nil {
 		id = getUUID()
 	}*/
@@ -82,7 +82,7 @@ func copyAndCapture(b *bytes.Buffer, buf []byte, r io.Reader) error {
 		if n > 0 {
 			d := buf[:n]
 			out = append(out, d...) // copy everything to out
-			_, err := b.Write(d) // and then write it to w
+			_, err := b.Write(d)    // and then write it to w
 			if err != nil {
 				return err
 			}
@@ -100,7 +100,7 @@ func copyAndCapture(b *bytes.Buffer, buf []byte, r io.Reader) error {
 func Status(manager map[string]Job, jobID string) (string, error) {
 	job, exists := manager[jobID]
 	if !exists {
-		return "job does not exist", error.New("invalid job ID")
+		return "job does not exist", errors.New("invalid job ID")
 	}
 	status := "running"
 
@@ -108,18 +108,18 @@ func Status(manager map[string]Job, jobID string) (string, error) {
 		status = fmt.Sprintf("exited with code %d", job.CmdStruct.ProcessState.ExitCode()) // TODO ensure that exit code means process actually exited
 	}
 
-	return fmt.Sprintf("jobID %s status: %s", jobID, status), nil
+	return fmt.Sprintf("status: %s", status), nil
 }
 
 func Stop(manager map[string]Job, jobID string) (string, error) {
 	job, exists := manager[jobID]
 	if !exists {
-		return "cannot stop job", error.New("invalid job ID")
+		return "cannot stop job", errors.New("invalid job ID")
 	}
 
 	// attempt to stop job
 	if job.CmdStruct.ProcessState != nil {
-		return "cannot stop job: job is not running", error.New("job is not running")
+		return "cannot stop job: job is not running", errors.New("job is not running")
 	}
 
 	err := job.CmdStruct.Process.Kill()
