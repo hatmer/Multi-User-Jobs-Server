@@ -22,7 +22,7 @@ The server and client will be built using the gRPC framework. Messages passed be
 ### Server
 The server will keep track of active jobs in a map data structure and pass a reference to this map to the jobs library each time a jobs library function is called. The map key is the job ID, and the value is a struct containing a pointer to the exec.Cmd struct holding the running process associated with that job ID, the stdout and stderr pipes for the process, and the job’s owner.
 
-```
+```go
 type Job struct {
 	CmdStruct *exec.Cmd
 	StdOut    *bytes.Buffer 
@@ -42,7 +42,7 @@ Client
 The client will accept command line parameters specifying the operation (start/stop/status/stream) and either a script to run or the job ID. The client will provide usage information instead of making a request to the server if insufficient parameters are provided.
 
 Usage examples: 
-```
+```bash
 $ go run client.go start “sleep 100”
 { JobID: “1234”, status: “started” }
 $ go run client.go stop “1234”
@@ -66,9 +66,8 @@ Invalid parameters (e.g. an invalid/expired job ID): the server sends a helpful 
 Client never receives a response from the server: the client timeout after 10 seconds for all request types except for streaming which will wait forever
 A job runs for a very long time: the job will continue until it completes or is stopped by its owner.
 
-
-```
 .proto file
+```go
 syntax = "proto3";
 
 option go_package = "project/server";
