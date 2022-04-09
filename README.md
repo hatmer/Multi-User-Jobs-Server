@@ -42,7 +42,7 @@ Client
 The client will accept command line parameters specifying the operation (start/stop/status/stream) and either a script to run or the job ID. The client will provide usage information instead of making a request to the server if insufficient parameters are provided.
 
 Usage examples: 
-```bash
+```sh
 $ go run client.go start “sleep 100”
 { JobID: “1234”, status: “started” }
 $ go run client.go stop “1234”
@@ -67,7 +67,7 @@ Client never receives a response from the server: the client timeout after 10 se
 A job runs for a very long time: the job will continue until it completes or is stopped by its owner.
 
 .proto file
-```go
+```proto
 syntax = "proto3";
 
 option go_package = "project/server";
