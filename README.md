@@ -38,7 +38,7 @@ Completed jobs will be stored until the server is terminated so that clients can
 Five RPC endpoints will be exposed: start a job, stop a job, get the status of a running job, get the output of a completed job, and stream the output of a running job.
 
 The server will send a protobuf message in response to all correct requests, whether success or failure. In the case of success, the requested information will be sent. In the case of failure, an error message with an explanation of why the request failed will be sent. If the request is malformed then the server will send an error.
-Client
+
 The client will accept command line parameters specifying the operation (start/stop/status/stream) and either a script to run or the job ID. The client will provide usage information instead of making a request to the server if insufficient parameters are provided.
 
 Usage examples: 
