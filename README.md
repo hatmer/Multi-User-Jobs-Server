@@ -1,6 +1,5 @@
-# Jobs Server
+# Jobs Server Design Document
 
-# Design Document
 ## Overview
 
 The system will consist of a library for jobs-related functions, a server, and a client. The server will expose an RPC interface on a port. The client will connect to the RPC server to start, stop, get status, and stream output of jobs. The server and client will use mTLS encryption for authentication, and the server will perform per-job authorization of client requests. The system will be built in Go.
